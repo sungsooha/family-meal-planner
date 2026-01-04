@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <div class="panel">
+    <h2>Today: {{ today_label }}</h2>
+    {% if today %}
+      <div class="grid" style="margin-top: 1rem;">
+        {% for meal_type, meal in today.meals.items() %}
+          <div class="meal-card">
+            <h3>{{ meal_type.title() }}</h3>
+            {% if meal %}
+              {% if meal.recipe_id %}
+                <strong><a href="{{ url_for('recipe_detail', recipe_id=meal.recipe_id) }}">{{ meal.name }}</a></strong>
+              {% else %}
+                <strong>{{ meal.name }}</strong>
+              {% endif %}
+              <p>{{ meal.ingredients | length }} ingredients</p>
+            {% else %}
+              <p>No recipe selected.</p>
+            {% endif %}
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="empty">
+        <p>No weekly plan yet. Generate one to see today's meals.</p>
+      </div>
+    {% endif %}
+
+    <div class="actions">
+      <form action="{{ url_for('generate') }}" method="post">
+        <button type="submit">Generate Week Plan</button>
+      </form>
+      <a class="button secondary" href="{{ url_for('plan_view') }}">View Weekly Plan</a>
+      <a class="button secondary" href="{{ url_for('shopping_list_view') }}">Shopping List</a>
+      <a class="button secondary" href="{{ url_for('history_view') }}">Plan History</a>
+      <a class="button secondary" href="{{ url_for('recipes_view') }}">Recipes</a>
+    </div>
+  </div>
+{% endblock %}

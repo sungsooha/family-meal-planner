@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <div class="panel">
+    <h2>Select Recipe</h2>
+    {% if date and meal_type %}
+      <p>Choose a {{ meal_type }} recipe for {{ format_date(date) }}.</p>
+    {% endif %}
+
+    {% if recipes %}
+      <table>
+        <thead>
+          <tr>
+            <th>Recipe</th>
+            <th>Meal Types</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for recipe in recipes %}
+            <tr>
+              <td>{{ recipe.name }}</td>
+              <td>{{ recipe.meal_types | join(", ") }}</td>
+              <td>
+                <form method="post" action="{{ url_for('plan_assign') }}">
+                  <input type="hidden" name="date" value="{{ date }}" />
+                  <input type="hidden" name="meal_type" value="{{ meal_type }}" />
+                  <input type="hidden" name="recipe_id" value="{{ recipe.recipe_id }}" />
+                  <button type="submit">Select</button>
+                </form>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <div class="empty">
+        <p>No available recipes for this day. Remove a meal or add more recipes.</p>
+      </div>
+    {% endif %}
+    <div class="actions">
+      <a class="button" href="{{ url_for('plan_view') }}">Back to Weekly Plan</a>
+    </div>
+  </div>
+{% endblock %}

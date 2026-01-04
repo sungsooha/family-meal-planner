@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <div class="panel">
+    <h2>Recipes</h2>
+    <form method="get" style="margin: 0.75rem 0 1rem; display: flex; gap: 0.75rem; flex-wrap: wrap;">
+      {% set meal_types = ['breakfast', 'lunch', 'dinner', 'snack'] %}
+      {% for meal in meal_types %}
+        <label style="display: inline-flex; align-items: center; gap: 0.4rem;">
+          <input type="checkbox" name="meal_type" value="{{ meal }}" {% if filters and meal in filters %}checked{% endif %} />
+          {{ meal.title() }}
+        </label>
+      {% endfor %}
+      <button type="submit">Filter</button>
+      <a class="button secondary" href="{{ url_for('recipes_view') }}">Clear</a>
+    </form>
+    {% if recipes %}
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Meal</th>
+            <th>Source</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for recipe in recipes %}
+            <tr>
+              <td>
+                <a href="{{ url_for('recipe_detail', recipe_id=recipe.recipe_id) }}">{{ recipe.name }}</a>
+              </td>
+              <td>{{ recipe.meal_types | join(", ") }}</td>
+              <td>
+                {% if recipe.source_url %}
+                  <a href="{{ recipe.source_url }}" target="_blank" rel="noreferrer">YouTube</a>
+                {% else %}
+                  <span>Local</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <div class="empty">
+        <p>No recipes yet. Add one from a YouTube link to get started.</p>
+      </div>
+    {% endif %}
+    <div class="actions">
+      <a class="button" href="{{ url_for('recipes_new') }}">Add Recipe</a>
+      <a class="button secondary" href="{{ url_for('recipes_import') }}">Paste ChatGPT JSON</a>
+      <a class="button secondary" href="{{ url_for('index') }}">Back to Today</a>
+    </div>
+  </div>
+{% endblock %}

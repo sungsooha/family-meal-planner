@@ -1,0 +1,313 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <div class="panel">
+    <h2>Weekly Plan</h2>
+    {% if plan %}
+      <div class="actions" style="margin-bottom: 1rem;">
+        <form action="{{ url_for('generate') }}" method="post" style="display: flex; gap: 0.5rem; align-items: center;">
+          <input type="date" name="start_date" value="{{ plan.start_date }}" style="padding: 0.4rem 0.6rem; border-radius: 999px; border: 1px solid var(--border);" />
+          <button type="submit">Auto-Generate Week</button>
+        </form>
+        <form action="{{ url_for('plan_lock_all') }}" method="post">
+          <button type="submit">Lock All</button>
+        </form>
+        <form action="{{ url_for('plan_unlock_all') }}" method="post">
+          <button type="submit">Unlock All</button>
+        </form>
+        <a class="button secondary" href="{{ url_for('recipes_view') }}">Add Recipe</a>
+      </div>
+      <style>
+        .plan-grid {
+          display: grid;
+          gap: 0.75rem;
+        }
+        .plan-day {
+          padding: 0.85rem;
+          border-radius: 14px;
+          border: 1px solid var(--accent-light);
+          background: #fdfbf7;
+          display: grid;
+          gap: 0.5rem;
+        }
+        .plan-day h3 {
+          margin: 0;
+          color: var(--accent);
+        }
+        .plan-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 1rem;
+        }
+        .plan-summary {
+          color: var(--muted);
+          font-size: 0.9rem;
+        }
+        .plan-body[hidden] {
+          display: none;
+        }
+        .meal-row {
+          display: grid;
+          grid-template-columns: 110px 1fr auto;
+          gap: 0.5rem;
+          align-items: center;
+        }
+        .meal-label {
+          text-transform: uppercase;
+          letter-spacing: 0.08em;
+          font-size: 0.7rem;
+          color: var(--muted);
+        }
+        .meal-actions form {
+          margin: 0;
+        }
+                .icon-button {
+                  width: 34px;
+                  height: 34px;
+                  border-radius: 50%;
+                  display: inline-flex;
+                  align-items: center;
+                  justify-content: center;
+                  border: 1px solid var(--accent-light);
+                  background: #fffaf2;
+                  color: var(--accent);
+                  font-size: 0.95rem;
+                  cursor: pointer;
+                }
+                .icon-button.locked {
+                  background: var(--accent-light);
+                }
+        .drawer-scrim {
+          position: fixed;
+          inset: 0;
+          background: rgba(0, 0, 0, 0.35);
+          opacity: 0;
+          pointer-events: none;
+          transition: opacity 0.2s ease;
+        }
+        .drawer {
+          position: fixed;
+          top: 0;
+          right: 0;
+          height: 100vh;
+          width: min(520px, 90vw);
+          background: var(--panel);
+          border-left: 1px solid var(--border);
+          box-shadow: -20px 0 40px rgba(0, 0, 0, 0.12);
+          transform: translateX(100%);
+          transition: transform 0.25s ease;
+          display: grid;
+          grid-template-rows: auto 1fr;
+        }
+        .drawer-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 1rem 1.2rem;
+          border-bottom: 1px solid var(--border);
+        }
+        .drawer-title {
+          font-weight: 600;
+        }
+        .drawer-body {
+          padding: 0 1.2rem 1.2rem;
+          display: grid;
+          grid-template-rows: auto 1fr;
+          gap: 1rem;
+        }
+        .drawer.open {
+          transform: translateX(0);
+        }
+        .drawer-scrim.open {
+          opacity: 1;
+          pointer-events: auto;
+        }
+        @media (max-width: 720px) {
+          .meal-row {
+            grid-template-columns: 1fr;
+            align-items: start;
+          }
+        }
+      </style>
+      <div class="plan-grid">
+        {% for day in plan.days %}
+          {% set missing = namespace(count=0) %}
+          {% for meal_type in ['breakfast', 'lunch', 'dinner'] %}
+            {% set meal_item = day.meals.get(meal_type) %}
+            {% if not meal_item or not meal_item.recipe_id %}
+              {% set missing.count = missing.count + 1 %}
+            {% endif %}
+          {% endfor %}
+          <div class="plan-day">
+            <div class="plan-header">
+              <div>
+                <h3>{{ format_date(day.date) }}</h3>
+                <div class="plan-summary">{{ missing.count }} missing</div>
+              </div>
+              <button type="button" class="icon-button" data-toggle="day-{{ loop.index }}" data-date="{{ day.date }}">▾</button>
+            </div>
+            <div class="plan-body" id="day-{{ loop.index }}">
+              {% for meal_type in ['breakfast', 'lunch', 'dinner'] %}
+                {% set meal = day.meals[meal_type] %}
+                <div class="meal-row">
+                  <div class="meal-label">{{ meal_type }}</div>
+                  <div>
+                    {% if meal %}
+                      {% set recipe = recipes_by_id.get(meal.recipe_id) %}
+                      {% if meal.recipe_id %}
+                        <a
+                          href="{{ url_for('recipe_detail', recipe_id=meal.recipe_id) }}"
+                          data-recipe-id="{{ meal.recipe_id }}"
+                          data-recipe-name="{{ meal.name }}"
+                          data-meal-types="{{ recipe.meal_types | join(', ') if recipe }}"
+                          data-servings="{{ recipe.servings if recipe }}"
+                          data-source-url="{{ recipe.source_url if recipe }}"
+                          data-ingredients="{% if recipe and recipe.ingredients %}{{ recipe.ingredients[:3] | map(attribute='name') | join(', ') }}{% endif %}"
+                          data-detail-url="{{ url_for('recipe_detail', recipe_id=meal.recipe_id) }}"
+                          class="recipe-link"
+                        >{{ meal.name }}</a>
+                      {% else %}
+                        {{ meal.name }}
+                      {% endif %}
+                      {% if meal.locked %}<span class="muted">· locked</span>{% endif %}
+                  {% endif %}
+                </div>
+                <div class="meal-actions" style="display: flex; gap: 0.4rem;">
+                  {% if meal %}
+                    <form method="post" action="{{ url_for('plan_toggle_lock') }}">
+                      <input type="hidden" name="date" value="{{ day.date }}" />
+                      <input type="hidden" name="meal_type" value="{{ meal_type }}" />
+                      <button type="submit" class="icon-button {{ 'locked' if meal.locked }}" title="{{ 'Unlock' if meal.locked else 'Lock' }}">
+                        {{ '🔓' if meal.locked else '🔒' }}
+                      </button>
+                    </form>
+                    {% if not meal.locked %}
+                      <form method="post" action="{{ url_for('plan_clear') }}">
+                        <input type="hidden" name="date" value="{{ day.date }}" />
+                        <input type="hidden" name="meal_type" value="{{ meal_type }}" />
+                        <button type="submit" class="icon-button" title="Clear">✕</button>
+                      </form>
+                    {% endif %}
+                  {% else %}
+                    <a class="icon-button" href="{{ url_for('plan_select', date=day.date, meal=meal_type) }}" title="Add">＋</a>
+                  {% endif %}
+                </div>
+                </div>
+              {% endfor %}
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+      <div class="drawer-scrim" id="drawer-scrim"></div>
+      <aside class="drawer" id="recipe-drawer" aria-hidden="true">
+        <div class="drawer-header">
+          <div class="drawer-title">Recipe Detail</div>
+          <button class="icon-button" type="button" id="drawer-close" title="Close">✕</button>
+        </div>
+        <div class="drawer-body">
+          <div id="drawer-empty" class="empty">
+            <p>Select a recipe to preview details.</p>
+          </div>
+          <div id="drawer-content" style="display: none;">
+            <h3 id="drawer-name"></h3>
+            <p class="muted" id="drawer-meta"></p>
+            <p class="muted" id="drawer-ingredients"></p>
+            <div id="drawer-actions" class="actions">
+              <a class="button secondary" id="drawer-youtube" href="#" target="_blank" rel="noreferrer">Watch on YouTube</a>
+            </div>
+          </div>
+          <iframe id="recipe-frame" title="Recipe detail" style="width: 100%; height: 100%; border: 1px solid var(--border); border-radius: 12px; background: #fff;"></iframe>
+        </div>
+      </aside>
+    {% else %}
+      <div class="empty">
+        <p>No plan found yet. Generate one first.</p>
+      </div>
+    {% endif %}
+    <div class="actions">
+      <a class="button" href="{{ url_for('index') }}">Back to Today</a>
+      <a class="button secondary" href="{{ url_for('shopping_list_view') }}">Shopping List</a>
+      <a class="button secondary" href="{{ url_for('history_view') }}">Plan History</a>
+    </div>
+  </div>
+  <script>
+    const STORAGE_KEY = 'plan_folded_days';
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+    const today = '{{ today }}';
+    document.querySelectorAll('[data-toggle]').forEach((button) => {
+      const target = document.getElementById(button.dataset.toggle);
+      if (!target) return;
+      const hasSaved = Object.prototype.hasOwnProperty.call(saved, button.dataset.toggle);
+      const isPast = button.dataset.date && button.dataset.date < today;
+      const shouldFold = hasSaved ? saved[button.dataset.toggle] : isPast;
+      if (shouldFold) {
+        target.setAttribute('hidden', '');
+        button.textContent = '▸';
+      }
+      button.addEventListener('click', () => {
+        const hidden = target.hasAttribute('hidden');
+        if (hidden) {
+          target.removeAttribute('hidden');
+          button.textContent = '▾';
+          saved[button.dataset.toggle] = false;
+        } else {
+          target.setAttribute('hidden', '');
+          button.textContent = '▸';
+          saved[button.dataset.toggle] = true;
+        }
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
+      });
+    });
+
+    const emptyState = document.getElementById('drawer-empty');
+    const content = document.getElementById('drawer-content');
+    const nameEl = document.getElementById('drawer-name');
+    const metaEl = document.getElementById('drawer-meta');
+    const ingredientsEl = document.getElementById('drawer-ingredients');
+    const youtubeLink = document.getElementById('drawer-youtube');
+    const frame = document.getElementById('recipe-frame');
+    const drawer = document.getElementById('recipe-drawer');
+    const scrim = document.getElementById('drawer-scrim');
+    const closeBtn = document.getElementById('drawer-close');
+    document.querySelectorAll('.recipe-link').forEach((link) => {
+      link.addEventListener('click', (event) => {
+        event.preventDefault();
+        const name = link.dataset.recipeName || 'Recipe';
+        const mealTypes = link.dataset.mealTypes || '';
+        const servings = link.dataset.servings || '';
+        const sourceUrl = link.dataset.sourceUrl || '';
+        const ingredients = link.dataset.ingredients || '';
+        const detailUrl = link.dataset.detailUrl || link.href;
+
+        nameEl.textContent = name;
+        const metaBits = [];
+        if (mealTypes) metaBits.push(`Meal types: ${mealTypes}`);
+        if (servings) metaBits.push(`Serves: ${servings}`);
+        metaEl.textContent = metaBits.join(' · ');
+        ingredientsEl.textContent = ingredients ? `Key ingredients: ${ingredients}` : '';
+        frame.src = `${detailUrl}?embed=1`;
+        if (sourceUrl) {
+          youtubeLink.href = sourceUrl;
+          youtubeLink.style.display = 'inline-flex';
+        } else {
+          youtubeLink.style.display = 'none';
+        }
+
+        emptyState.style.display = 'none';
+        content.style.display = 'block';
+        drawer.classList.add('open');
+        scrim.classList.add('open');
+      });
+    });
+    const closeDrawer = () => {
+      drawer.classList.remove('open');
+      scrim.classList.remove('open');
+      content.style.display = 'none';
+      emptyState.style.display = 'block';
+      frame.src = '';
+    };
+    scrim.addEventListener('click', closeDrawer);
+    closeBtn.addEventListener('click', closeDrawer);
+  </script>
+{% endblock %}

@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <div class="panel">
+    <h2>Paste ChatGPT Recipe JSON</h2>
+    <p>Paste the JSON returned by ChatGPT and save it to the local recipe store.</p>
+    {% if error %}
+      <div class="empty" style="margin-top: 1rem;">
+        <p>{{ error }}</p>
+      </div>
+    {% endif %}
+    <form method="post" style="margin-top: 1rem; display: grid; gap: 1rem;">
+      <label>
+        Recipe ID (optional)
+        <input type="text" name="recipe_id" placeholder="e.g., 7f8c... or leave blank" value="{{ recipe_id }}" style="width: 100%; padding: 0.5rem;" />
+      </label>
+      <label>
+        Source URL (optional)
+        <input type="url" name="source_url" placeholder="https://www.youtube.com/watch?v=..." value="{{ source_url }}" style="width: 100%; padding: 0.5rem;" />
+      </label>
+      <label>
+        Recipe JSON
+        <textarea name="recipe_json" rows="12" placeholder="{\"name\": \"...\"}" style="width: 100%; padding: 0.5rem;">{{ raw_json }}</textarea>
+      </label>
+      <div class="actions">
+        <button type="submit">Save Recipe</button>
+        <a class="button secondary" href="{{ url_for('recipes_view') }}">Cancel</a>
+      </div>
+    </form>
+  </div>
+{% endblock %}

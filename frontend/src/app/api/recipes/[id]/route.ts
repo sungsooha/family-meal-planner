@@ -1,0 +1,78 @@
+import { NextResponse } from "next/server";
+import {
+  getRecipeById,
+  getRecipeSourceById,
+  getWeeklyPlanForDate,
+  listDailyPlans,
+  saveDailyPlan,
+  updateRecipe,
+} from "@/lib/data";
+import { computeShoppingList, syncShoppingState } from "@/lib/shopping";
+
+type Params = { params: Promise<{ id: string }> };
+
+export async function GET(_: Request, { params }: Params) {
+  const { id } = await params;
+  const recipe = await getRecipeById(id);
+  if (!recipe) {
+    return NextResponse.json({ error: "Recipe not found." }, { status: 404 });
+  }
+  const source = await getRecipeSourceById(id);
+  let thumbnailUrl = recipe.thumbnail_url ?? source?.thumbnail_url ?? null;
+  if (!thumbnailUrl && recipe.source_url) {
+    try {
+      const parsed = new URL(recipe.source_url);
+      let videoId = "";
+      if (parsed.hostname.includes("youtu.be")) videoId = parsed.pathname.replace("/", "");
+      else if (parsed.searchParams.get("v")) videoId = parsed.searchParams.get("v") ?? "";
+      else if (parsed.pathname.startsWith("/shorts/")) videoId = parsed.pathname.split("/shorts/")[1]?.split("/")[0] ?? "";
+      if (videoId) thumbnailUrl = `https://i.ytimg.com/vi/${videoId}/maxresdefault.jpg`;
+    } catch {
+      thumbnailUrl = thumbnailUrl ?? null;
+    }
+  }
+  return NextResponse.json({
+    ...recipe,
+    source_url: recipe.source_url ?? source?.source_url ?? null,
+    thumbnail_url: thumbnailUrl,
+    source_title: source?.title ?? null,
+  });
+}
+
+export async function PUT(request: Request, { params }: Params) {
+  const { id } = await params;
+  const payload = await request.json().catch(() => null);
+  if (!payload) {
+    return NextResponse.json({ error: "Invalid payload." }, { status: 400 });
+  }
+  const success = await updateRecipe(id, payload);
+  if (!success) {
+    return NextResponse.json({ error: "Recipe not found." }, { status: 404 });
+  }
+  const dailyPlans = await listDailyPlans();
+  for (const day of dailyPlans) {
+    let updated = false;
+    Object.entries(day.meals).forEach(([mealKey, mealValue]) => {
+      if (mealValue && mealValue.recipe_id === id) {
+        day.meals[mealKey] = {
+          recipe_id: id,
+          locked: mealValue.locked ?? false,
+          completed: mealValue.completed ?? false,
+        };
+        updated = true;
+      }
+    });
+    if (updated) {
+      await saveDailyPlan(day);
+    }
+  }
+  if (dailyPlans.length) {
+    const today = new Date().toISOString().split("T")[0];
+    const currentWeek = await getWeeklyPlanForDate(today);
+    const weeklyEn = await computeShoppingList(currentWeek, "en");
+    await syncShoppingState(weeklyEn, "en");
+    const weeklyOriginal = await computeShoppingList(currentWeek, "original");
+    await syncShoppingState(weeklyOriginal, "original");
+  }
+  return NextResponse.json({ ok: true });
+}

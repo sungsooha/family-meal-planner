@@ -1,0 +1,430 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <div class="panel">
+    <h2>Shopping List</h2>
+    <div class="actions" style="margin-top: 1rem;">
+      <a class="button secondary" href="{{ url_for('shopping_list_view', lang='en') }}" data-lang="en">English</a>
+      <a class="button secondary" href="{{ url_for('shopping_list_view', lang='original') }}" data-lang="original">Original</a>
+      <button type="button" onclick="window.print()">Print</button>
+    </div>
+    <style>
+      .shopping-layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        gap: 1rem;
+        margin-top: 1rem;
+      }
+      @media (max-width: 900px) {
+        .shopping-layout {
+          grid-template-columns: 1fr;
+        }
+      }
+      .shopping-card {
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 0.85rem;
+        background: #fbfbfa;
+      }
+      .shopping-card h3 {
+        margin: 0 0 0.4rem;
+        font-size: 1rem;
+      }
+      .qty-input {
+        width: 90px;
+        padding: 0.2rem 0.45rem;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+      }
+      .tiny-button {
+        padding: 0.3rem 0.7rem;
+        font-size: 0.82rem;
+      }
+      .icon-button {
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid var(--accent-light);
+        background: #fffaf2;
+        color: var(--accent);
+        font-size: 0.95rem;
+        cursor: pointer;
+      }
+      .drawer-scrim {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.35);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.2s ease;
+      }
+      .drawer {
+        position: fixed;
+        top: 0;
+        right: 0;
+        height: 100vh;
+        width: min(520px, 90vw);
+        background: var(--panel);
+        border-left: 1px solid var(--border);
+        box-shadow: -20px 0 40px rgba(0, 0, 0, 0.12);
+        transform: translateX(100%);
+        transition: transform 0.25s ease;
+        display: grid;
+        grid-template-rows: auto 1fr;
+        z-index: 10;
+      }
+      .drawer-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 1rem 1.2rem;
+        border-bottom: 1px solid var(--border);
+      }
+      .drawer-title {
+        font-weight: 600;
+      }
+      .drawer-body {
+        padding: 0 1.2rem 1.2rem;
+      }
+      .drawer.open {
+        transform: translateX(0);
+      }
+      .drawer-scrim.open {
+        opacity: 1;
+        pointer-events: auto;
+        z-index: 9;
+      }
+      @media print {
+        header, footer, .actions, .drawer, .drawer-scrim, form button, #weekly-card, #shopping-card table, #shopping-card form {
+          display: none !important;
+        }
+        body {
+          background: #fff;
+        }
+        .panel {
+          box-shadow: none;
+          border: none;
+        }
+        .shopping-layout {
+          grid-template-columns: 1fr;
+        }
+        #print-compact {
+          display: block !important;
+        }
+      }
+    </style>
+    <div class="shopping-layout">
+      <div class="shopping-card" id="weekly-card">
+        <h3>Weekly Ingredients</h3>
+        {% if weekly_list %}
+          <table id="weekly-table">
+            <thead>
+              <tr>
+                <th>Ingredient</th>
+                <th>Quantity</th>
+                <th>Used In</th>
+                <th></th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in weekly_list %}
+                <tr data-key="{{ item.key }}" data-name="{{ item.name }}" data-unit="{{ item.unit }}" data-quantity="{{ item.quantity }}" data-recipes="{{ item.recipes_count }}" data-recipe-ids="{{ item.recipe_ids | join(',') }}" data-manual="{{ item.manual }}">
+                  <td>{{ item.name }}</td>
+                  <td>{{ item.quantity }} {{ item.unit }}</td>
+                  <td>{{ item.recipes_count }} recipes</td>
+                  <td>
+                    {% if item.recipes_count %}
+                      <button type="button" class="icon-button view-recipes" title="View recipes">☰</button>
+                    {% endif %}
+                  </td>
+                  <td>
+                    <form method="post" action="{{ url_for('shopping_list_add') }}" data-action="add">
+                      <input type="hidden" name="key" value="{{ item.key }}" />
+                      <input type="hidden" name="name" value="{{ item.name }}" />
+                      <input type="hidden" name="unit" value="{{ item.unit }}" />
+                      <input type="hidden" name="quantity" value="{{ item.quantity }}" />
+                      <input type="hidden" name="lang" value="{{ lang }}" />
+                      <button type="submit" class="tiny-button">Add</button>
+                    </form>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        {% else %}
+          <div class="empty">
+            <p>No ingredients found for this week.</p>
+          </div>
+        {% endif %}
+      </div>
+      <div class="shopping-card" id="shopping-card">
+        <h3>Shopping List</h3>
+        <div id="print-compact" style="display: none; font-size: 0.9rem; line-height: 1.5;">
+          {% if shopping_items %}
+            <p><strong>Shopping List</strong></p>
+            <p>
+              {% for item in shopping_items %}
+                {{ item.name }} ({{ item.quantity }} {{ item.unit }}){% if not loop.last %}, {% endif %}
+              {% endfor %}
+            </p>
+          {% else %}
+            <p>No items added.</p>
+          {% endif %}
+        </div>
+        <form method="post" action="{{ url_for('shopping_list_add_manual') }}" style="display: grid; gap: 0.5rem; margin-bottom: 1rem;">
+          <div style="display: grid; grid-template-columns: 1.2fr 0.8fr 0.6fr auto; gap: 0.5rem;">
+            <input type="text" name="name" placeholder="Ingredient" style="padding: 0.4rem 0.6rem; border-radius: 999px; border: 1px solid var(--border);" />
+            <input type="text" name="unit" placeholder="Unit" style="padding: 0.4rem 0.6rem; border-radius: 999px; border: 1px solid var(--border);" />
+            <input type="text" name="quantity" placeholder="Qty" style="padding: 0.4rem 0.6rem; border-radius: 999px; border: 1px solid var(--border);" />
+            <input type="hidden" name="lang" value="{{ lang }}" />
+            <button type="submit" class="tiny-button">Add</button>
+          </div>
+        </form>
+        {% if shopping_items %}
+          <table id="shopping-table">
+            <thead>
+              <tr>
+                <th>Ingredient</th>
+                <th>Quantity</th>
+                <th></th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in shopping_items %}
+                <tr data-key="{{ item.key }}" data-name="{{ item.name }}" data-unit="{{ item.unit }}" data-quantity="{{ item.quantity }}" data-recipes="{{ item.recipes_count }}" data-recipe-ids="{{ item.recipe_ids | join(',') }}">
+                  <td>{{ item.name }}</td>
+                  <td>
+                    <form method="post" action="{{ url_for('shopping_list_update') }}" data-action="update" style="display: flex; gap: 0.4rem; align-items: center;">
+                      <input type="hidden" name="key" value="{{ item.key }}" />
+                      <input type="hidden" name="lang" value="{{ lang }}" />
+                      <input class="qty-input" type="text" name="quantity" value="{{ item.quantity }}" />
+                      <span>{{ item.unit }}</span>
+                      <button type="submit" class="tiny-button">Save</button>
+                    </form>
+                  </td>
+                  <td>
+                    {% if item.recipes_count %}
+                      <button type="button" class="icon-button view-recipes" title="View recipes">☰</button>
+                    {% endif %}
+                  </td>
+                  <td>
+                    <form method="post" action="{{ url_for('shopping_list_remove') }}" data-action="remove">
+                      <input type="hidden" name="key" value="{{ item.key }}" />
+                      <input type="hidden" name="lang" value="{{ lang }}" />
+                    <button type="submit" class="tiny-button">Remove</button>
+                    </form>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        {% else %}
+          <div class="empty">
+            <p>No items added yet.</p>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+    <div class="actions">
+      <a class="button" href="{{ url_for('index') }}">Back to Today</a>
+      <a class="button secondary" href="{{ url_for('plan_view') }}">Weekly Plan</a>
+      <a class="button secondary" href="{{ url_for('history_view') }}">Plan History</a>
+    </div>
+  </div>
+  <div class="drawer-scrim" id="recipes-scrim"></div>
+  <aside class="drawer" id="recipes-drawer" aria-hidden="true">
+    <div class="drawer-header">
+      <div class="drawer-title">Recipes Using This</div>
+      <button class="icon-button" type="button" id="recipes-close" title="Close">✕</button>
+    </div>
+    <div class="drawer-body">
+      <div id="recipes-modal-content"></div>
+      <div class="actions" style="margin-top: 1rem;">
+        <button type="button" id="recipes-prev">Previous</button>
+        <button type="button" id="recipes-next">Next</button>
+      </div>
+    </div>
+  </aside>
+  <script>
+    const LANG_KEY = 'shopping_list_lang';
+    const links = document.querySelectorAll('[data-lang]');
+    links.forEach((link) => {
+      link.addEventListener('click', () => {
+        localStorage.setItem(LANG_KEY, link.dataset.lang);
+      });
+    });
+    const savedLang = localStorage.getItem(LANG_KEY);
+    if (savedLang && savedLang !== '{{ lang }}') {
+      const target = document.querySelector(`[data-lang="${savedLang}"]`);
+      if (target) {
+        window.location.href = target.href;
+      }
+    }
+
+    const weeklyBody = document.querySelector('#weekly-table tbody');
+    const shoppingBody = document.querySelector('#shopping-table tbody');
+    const recipesMap = {{ recipes_by_id | tojson }};
+
+    const postForm = async (form) => {
+      const data = new FormData(form);
+      await fetch(form.action, { method: 'POST', body: data });
+    };
+
+    const buildShoppingRow = (row) => {
+      const key = row.dataset.key;
+      const name = row.dataset.name;
+      const unit = row.dataset.unit;
+      const quantity = row.dataset.quantity;
+      const recipes = row.dataset.recipeIds || '';
+      const recipesCount = row.dataset.recipes || '0';
+      const manual = row.dataset.manual === 'True' || row.dataset.manual === 'true';
+      const tr = document.createElement('tr');
+      tr.dataset.key = key;
+      tr.dataset.name = name;
+      tr.dataset.unit = unit;
+      tr.dataset.quantity = quantity;
+      tr.dataset.recipes = recipesCount;
+      tr.dataset.recipeIds = recipes;
+      tr.innerHTML = `
+        <td>${name}</td>
+        <td>
+          <form method="post" action="{{ url_for('shopping_list_update') }}" data-action="update" style="display: flex; gap: 0.4rem; align-items: center;">
+            <input type="hidden" name="key" value="${key}" />
+            <input type="hidden" name="lang" value="{{ lang }}" />
+            <input class="qty-input" type="text" name="quantity" value="${quantity}" />
+            <span>${unit}</span>
+            <button type="submit">Save</button>
+          </form>
+        </td>
+        <td>
+          ${(!manual && recipesCount !== '0') ? '<button type="button" class="icon-button view-recipes" title="View recipes">☰</button>' : ''}
+        </td>
+        <td>
+          <form method="post" action="{{ url_for('shopping_list_remove') }}" data-action="remove">
+            <input type="hidden" name="key" value="${key}" />
+            <input type="hidden" name="lang" value="{{ lang }}" />
+            <button type="submit">Remove</button>
+          </form>
+        </td>
+      `;
+      return tr;
+    };
+
+    const buildWeeklyRow = (row) => {
+      const key = row.dataset.key;
+      const name = row.dataset.name;
+      const unit = row.dataset.unit;
+      const quantity = row.dataset.quantity;
+      const recipesCount = row.dataset.recipes || '0';
+      const recipeIds = row.dataset.recipeIds || '';
+      const tr = document.createElement('tr');
+      tr.dataset.key = key;
+      tr.dataset.name = name;
+      tr.dataset.unit = unit;
+      tr.dataset.quantity = quantity;
+      tr.dataset.recipes = recipesCount;
+      tr.dataset.recipeIds = recipeIds;
+      tr.innerHTML = `
+        <td>${name}</td>
+        <td>${quantity} ${unit}</td>
+        <td>${recipesCount} recipes</td>
+        <td>
+          ${recipesCount !== '0' ? '<button type="button" class="icon-button view-recipes" title="View recipes">☰</button>' : ''}
+        </td>
+        <td>
+          <form method="post" action="{{ url_for('shopping_list_add') }}" data-action="add">
+            <input type="hidden" name="key" value="${key}" />
+            <input type="hidden" name="name" value="${name}" />
+            <input type="hidden" name="unit" value="${unit}" />
+            <input type="hidden" name="quantity" value="${quantity}" />
+            <input type="hidden" name="lang" value="{{ lang }}" />
+            <button type="submit">Add</button>
+          </form>
+        </td>
+      `;
+      return tr;
+    };
+
+    document.addEventListener('submit', async (event) => {
+      const form = event.target;
+      if (!form.dataset.action) return;
+      event.preventDefault();
+      await postForm(form);
+      const row = form.closest('tr');
+      if (!row) return;
+      if (form.dataset.action === 'add') {
+        const newRow = buildShoppingRow(row);
+        shoppingBody.appendChild(newRow);
+        row.remove();
+      }
+      if (form.dataset.action === 'remove') {
+        const newRow = buildWeeklyRow(row);
+        weeklyBody.appendChild(newRow);
+        row.remove();
+      }
+    });
+
+    const recipesDrawer = document.getElementById('recipes-drawer');
+    const recipesScrim = document.getElementById('recipes-scrim');
+    const recipesClose = document.getElementById('recipes-close');
+    const recipesPrev = document.getElementById('recipes-prev');
+    const recipesNext = document.getElementById('recipes-next');
+    const recipesContent = document.getElementById('recipes-modal-content');
+    let currentRecipes = [];
+    let currentIndex = 0;
+
+    const renderRecipeModal = () => {
+      const recipe = recipesMap[currentRecipes[currentIndex]];
+      if (!recipe) return;
+      recipesContent.innerHTML = `
+        <h3>${recipe.name}</h3>
+        <p class="muted">${(recipe.meal_types || []).join(', ')}</p>
+        <div class="actions">
+          <a class="button" href="/recipes/${recipe.recipe_id}" target="_blank" rel="noreferrer">Open Recipe</a>
+          ${recipe.source_url ? `<a class="button secondary" href="${recipe.source_url}" target="_blank" rel="noreferrer">YouTube</a>` : ''}
+        </div>
+      `;
+    };
+
+    const openRecipeModal = (recipeIds) => {
+      currentRecipes = recipeIds.filter((id) => recipesMap[id]);
+      if (!currentRecipes.length) return;
+      currentIndex = 0;
+      renderRecipeModal();
+      recipesDrawer.classList.add('open');
+      recipesScrim.classList.add('open');
+    };
+
+    document.addEventListener('click', (event) => {
+      const button = event.target.closest('.view-recipes');
+      if (!button) return;
+      const row = button.closest('tr');
+      if (!row) return;
+      const ids = (row.dataset.recipeIds || '').split(',').filter(Boolean);
+      openRecipeModal(ids);
+    });
+
+    const closeRecipeModal = () => {
+      recipesDrawer.classList.remove('open');
+      recipesScrim.classList.remove('open');
+      recipesContent.innerHTML = '';
+    };
+    recipesClose.addEventListener('click', closeRecipeModal);
+    recipesScrim.addEventListener('click', closeRecipeModal);
+    recipesPrev.addEventListener('click', () => {
+      if (!currentRecipes.length) return;
+      currentIndex = (currentIndex - 1 + currentRecipes.length) % currentRecipes.length;
+      renderRecipeModal();
+    });
+    recipesNext.addEventListener('click', () => {
+      if (!currentRecipes.length) return;
+      currentIndex = (currentIndex + 1) % currentRecipes.length;
+      renderRecipeModal();
+    });
+  </script>
+{% endblock %}

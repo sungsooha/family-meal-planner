@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <div class="panel">
+    <h2>Edit Recipe</h2>
+    {% if error %}
+      <div class="empty" style="margin-top: 1rem;">
+        <p>{{ error }}</p>
+      </div>
+    {% endif %}
+    <form method="post" style="margin-top: 1rem; display: grid; gap: 1rem;">
+      <label>
+        Name
+        <input type="text" name="name" value="{{ recipe.name }}" style="width: 100%; padding: 0.5rem;" required />
+      </label>
+      <label>
+        Meal types (comma-separated)
+        <input type="text" name="meal_types" value="{{ recipe.meal_types | join(", ") }}" style="width: 100%; padding: 0.5rem;" />
+      </label>
+      <label>
+        Servings
+        <input type="number" name="servings" min="1" value="{{ recipe.servings }}" style="width: 100%; padding: 0.5rem;" />
+      </label>
+      <label>
+        Source URL
+        <input type="url" name="source_url" value="{{ recipe.source_url }}" style="width: 100%; padding: 0.5rem;" />
+      </label>
+      <label>
+        Ingredients (one per line: name,quantity,unit)
+        <textarea name="ingredients" rows="6" style="width: 100%; padding: 0.5rem;">{% for item in recipe.ingredients %}{{ item.name }},{% if item.quantity is not none %}{{ item.quantity }}{% endif %}{% if item.unit %},{{ item.unit }}{% endif %}{% if not loop.last %}\n{% endif %}{% endfor %}</textarea>
+      </label>
+      <label>
+        Ingredients (original language)
+        <textarea name="ingredients_original" rows="6" style="width: 100%; padding: 0.5rem;">{% for item in recipe.ingredients_original %}{{ item.name }},{% if item.quantity is not none %}{{ item.quantity }}{% endif %}{% if item.unit %},{{ item.unit }}{% endif %}{% if not loop.last %}\n{% endif %}{% endfor %}</textarea>
+      </label>
+      <label>
+        Instructions (English)
+        <textarea name="instructions" rows="6" style="width: 100%; padding: 0.5rem;">{{ recipe.instructions | join("\n") }}</textarea>
+      </label>
+      <label>
+        Instructions (original language)
+        <textarea name="instructions_original" rows="6" style="width: 100%; padding: 0.5rem;">{{ recipe.instructions_original | join("\n") }}</textarea>
+      </label>
+      <div class="actions">
+        <button type="submit">Save Changes</button>
+        <a class="button secondary" href="{{ url_for('recipe_detail', recipe_id=recipe.recipe_id) }}">Cancel</a>
+      </div>
+    </form>
+  </div>
+{% endblock %}

@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <div class="panel">
+    <h2>Plan History</h2>
+    {% if history %}
+      <table>
+        <thead>
+          <tr>
+            <th>Generated</th>
+            <th>Week Start</th>
+            <th>Meals</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for entry in history | reverse %}
+            <tr>
+              <td>{{ entry.generated_at }}</td>
+              <td>{{ format_date(entry.plan.start_date) }}</td>
+              <td>{{ entry.plan.days | length }} days</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <div class="empty">
+        <p>No plan history yet. Generate a plan to get started.</p>
+      </div>
+    {% endif %}
+    <div class="actions">
+      <a class="button" href="{{ url_for('index') }}">Back to Today</a>
+      <a class="button secondary" href="{{ url_for('plan_view') }}">Weekly Plan</a>
+    </div>
+  </div>
+{% endblock %}

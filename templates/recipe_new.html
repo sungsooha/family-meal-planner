@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <div class="panel">
+    <h2>Add Recipe (YouTube or Manual)</h2>
+    <p>Paste a YouTube link and fill in the details below. Auto-extraction uses the local cache for now.</p>
+    {% if error %}
+      <div class="empty" style="margin-top: 1rem;">
+        <p>{{ error }}</p>
+      </div>
+    {% endif %}
+    <form method="post" style="margin-top: 1rem; display: grid; gap: 1rem;">
+      <label>
+        YouTube URL
+        <input type="url" name="source_url" placeholder="https://www.youtube.com/watch?v=..." value="{{ prefill.source_url }}" style="width: 100%; padding: 0.5rem;" />
+      </label>
+      <label>
+        Recipe name
+        <input type="text" name="name" placeholder="e.g., Chicken noodle soup" value="{{ prefill.name }}" style="width: 100%; padding: 0.5rem;" required />
+      </label>
+      <label>
+        Meal type
+        <select name="meal_type" style="width: 100%; padding: 0.5rem;">
+          <option value="breakfast" {% if prefill.meal_type == "breakfast" %}selected{% endif %}>Breakfast</option>
+          <option value="lunch" {% if prefill.meal_type == "lunch" %}selected{% endif %}>Lunch</option>
+          <option value="dinner" {% if prefill.meal_type == "dinner" %}selected{% endif %}>Dinner</option>
+        </select>
+      </label>
+      <label>
+        Ingredients (one per line: name,quantity,unit)
+        <textarea name="ingredients" rows="6" placeholder="e.g., chicken breast,500,g" style="width: 100%; padding: 0.5rem;">{{ prefill.ingredients }}</textarea>
+      </label>
+      <label>
+        Ingredients (original language)
+        <textarea name="ingredients_original" rows="6" placeholder="Original language ingredients" style="width: 100%; padding: 0.5rem;">{{ prefill.ingredients_original }}</textarea>
+      </label>
+      <label>
+        Instructions (English)
+        <textarea name="instructions" rows="6" placeholder="Step-by-step instructions" style="width: 100%; padding: 0.5rem;">{{ prefill.instructions }}</textarea>
+      </label>
+      <label>
+        Instructions (original language)
+        <textarea name="instructions_original" rows="6" placeholder="Original language instructions" style="width: 100%; padding: 0.5rem;">{{ prefill.instructions_original }}</textarea>
+      </label>
+      <div class="actions">
+        <button type="submit">Save Recipe</button>
+        <button type="submit" formaction="{{ url_for('recipes_extract') }}" formmethod="post">Try Auto-Extract</button>
+        <a class="button secondary" href="{{ url_for('recipes_view') }}">Cancel</a>
+      </div>
+    </form>
+  </div>
+{% endblock %}

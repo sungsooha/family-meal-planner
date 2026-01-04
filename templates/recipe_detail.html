@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <div class="panel">
+    <h2>{{ recipe.name }}</h2>
+    {% if recipe.meal_types %}
+      <p>Meal types: {{ recipe.meal_types | join(", ") }}</p>
+    {% endif %}
+    {% if recipe.servings %}
+      <p>Serves: {{ recipe.servings }}</p>
+    {% endif %}
+
+    {% if embed_url %}
+      <div style="margin: 1rem 0;">
+        <iframe width="100%" height="360" src="{{ embed_url }}" title="YouTube video" frameborder="0" allowfullscreen></iframe>
+      </div>
+    {% elif recipe.source_url %}
+      <p><a href="{{ recipe.source_url }}" target="_blank" rel="noreferrer">Watch on YouTube</a></p>
+    {% endif %}
+
+    <div class="actions" style="margin: 1rem 0;">
+      <button type="button" data-lang="en" onclick="setLang('en')">English</button>
+      <button type="button" data-lang="original" onclick="setLang('original')">Original</button>
+    </div>
+
+    <h3>Instructions</h3>
+    <div data-lang-block="en">
+      {% if recipe.instructions %}
+        <ol>
+          {% for step in recipe.instructions %}
+            <li>{{ step }}</li>
+          {% endfor %}
+        </ol>
+      {% else %}
+        <p class="muted">No instructions listed.</p>
+      {% endif %}
+    </div>
+    <div data-lang-block="original" style="display: none;">
+      {% if recipe.instructions_original %}
+        <ol>
+          {% for step in recipe.instructions_original %}
+            <li>{{ step }}</li>
+          {% endfor %}
+        </ol>
+      {% else %}
+        <p class="muted">No instructions listed.</p>
+      {% endif %}
+    </div>
+
+    <h3>Ingredients</h3>
+    <div data-lang-block="en">
+      {% if recipe.ingredients %}
+        <ul>
+          {% for item in recipe.ingredients %}
+            <li>{{ item.quantity }} {{ item.unit }} {{ item.name }}</li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="muted">No ingredients listed.</p>
+      {% endif %}
+    </div>
+    <div data-lang-block="original" style="display: none;">
+      {% if recipe.ingredients_original %}
+        <ul>
+          {% for item in recipe.ingredients_original %}
+            <li>{{ item.quantity }} {{ item.unit }} {{ item.name }}</li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="muted">No ingredients listed.</p>
+      {% endif %}
+    </div>
+
+    <div class="actions">
+      <a class="button" href="{{ url_for('recipes_view') }}">Back to Recipes</a>
+      <a class="button secondary" href="{{ url_for('recipe_edit', recipe_id=recipe.recipe_id) }}">Edit Recipe</a>
+      <a class="button secondary" href="{{ url_for('plan_view') }}">Weekly Plan</a>
+    </div>
+  </div>
+  <script>
+    const STORAGE_KEY = 'recipe_lang';
+
+    function setLang(lang) {
+      localStorage.setItem(STORAGE_KEY, lang);
+      document.querySelectorAll('[data-lang-block]').forEach((block) => {
+        block.style.display = block.dataset.langBlock === lang ? 'block' : 'none';
+      });
+    }
+
+    const hasEnglish = document.querySelector('[data-lang-block="en"]')?.textContent.trim().length;
+    const fallback = hasEnglish ? 'en' : 'original';
+    const saved = localStorage.getItem(STORAGE_KEY) || fallback;
+    setLang(saved);
+  </script>
+{% endblock %}
