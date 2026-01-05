@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { X, Pencil, RefreshCw, Lock, Unlock, Trash2, Printer } from "lucide-react";
+import { X, Pencil, RefreshCw, Lock, Unlock, Trash2, Printer, SlidersHorizontal } from "lucide-react";
 import { useToast } from "@/components/ToastProvider";
 
 type BuyListItem = {
@@ -147,7 +147,7 @@ export default function SavedBuyListsPage() {
   return (
     <div className="space-y-6">
       <section
-        className={`sticky top-24 z-20 rounded-3xl border bg-white/90 p-4 text-xs backdrop-blur transition hover:shadow-lg hover:ring-2 hover:ring-emerald-200/70 ${
+        className={`sticky top-[calc(var(--header-height)+0.5rem)] z-20 scroll-mt-[calc(var(--header-height)+2rem)] rounded-3xl border bg-white/90 p-4 text-xs backdrop-blur transition hover:shadow-lg hover:ring-2 hover:ring-emerald-200/70 ${
           actionHidden ? "-translate-y-20 opacity-0 pointer-events-none" : "translate-y-0 opacity-100"
         } border-white/70 shadow-sm`}
       >
@@ -158,10 +158,12 @@ export default function SavedBuyListsPage() {
       </section>
       {actionHidden && (
         <button
-          className="fixed right-6 top-28 z-30 rounded-full bg-rose-500 px-3 py-1.5 text-xs font-semibold text-white shadow-lg backdrop-blur hover:bg-rose-600"
+          className="fixed left-4 top-[calc(var(--header-height)+0.5rem+env(safe-area-inset-top))] z-30 inline-flex h-6 w-6 items-center justify-center rounded-full bg-rose-500 text-white shadow-lg backdrop-blur hover:bg-rose-600 sm:left-6"
           onClick={() => setActionHidden(false)}
+          aria-label="Show actions"
+          title="Show actions"
         >
-          Show actions
+          <SlidersHorizontal className="h-3.5 w-3.5" />
         </button>
       )}
 

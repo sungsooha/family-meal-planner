@@ -1,7 +1,21 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { CalendarDays, Lock, LockOpen, Wand2, X, Plus, Utensils, ChefHat, CheckCircle2, ListChecks, ShoppingBasket, Heart } from "lucide-react";
+import {
+  CalendarDays,
+  Lock,
+  LockOpen,
+  Wand2,
+  X,
+  Plus,
+  Utensils,
+  ChefHat,
+  CheckCircle2,
+  ListChecks,
+  ShoppingBasket,
+  Heart,
+  SlidersHorizontal,
+} from "lucide-react";
 import { useLanguage } from "@/components/LanguageProvider";
 
 type Ingredient = { name: string; quantity: number | string; unit: string };
@@ -314,7 +328,7 @@ export default function WeeklyPlanPage() {
   return (
     <div className="space-y-6">
       <section
-        className={`sticky top-24 z-20 flex flex-wrap items-center justify-between rounded-3xl border bg-white/90 backdrop-blur transition ${
+        className={`sticky top-[calc(var(--header-height)+0.5rem)] z-20 flex scroll-mt-[calc(var(--header-height)+2rem)] flex-wrap items-center justify-between rounded-3xl border bg-white/90 backdrop-blur transition ${
           actionHidden ? "-translate-y-20 opacity-0 pointer-events-none" : "translate-y-0 opacity-100"
         } gap-2 p-3 text-xs border-white/60 shadow-sm`}
       >
@@ -431,10 +445,12 @@ export default function WeeklyPlanPage() {
       </section>
       {actionHidden && (
         <button
-          className="fixed right-6 top-28 z-30 rounded-full bg-rose-500 px-3 py-1.5 text-xs font-semibold text-white shadow-lg backdrop-blur hover:bg-rose-600"
+          className="fixed left-4 top-[calc(var(--header-height)+0.5rem+env(safe-area-inset-top))] z-30 inline-flex h-6 w-6 items-center justify-center rounded-full bg-rose-500 text-white shadow-lg backdrop-blur hover:bg-rose-600 sm:left-6"
           onClick={() => setActionHidden(false)}
+          aria-label="Show actions"
+          title="Show actions"
         >
-          Show actions
+          <SlidersHorizontal className="h-3.5 w-3.5" />
         </button>
       )}
 
@@ -600,9 +616,11 @@ export default function WeeklyPlanPage() {
               .filter((day) => collapsedDays[day.date])
               .map((day) => {
                 const missing = Object.values(day.meals).filter((meal) => !meal).length;
-                const mealSummary = Object.entries(day.meals).map(([meal, mealValue]) => {
+                const mealSummary = mealTypeOptions.map((meal) => {
+                  const mealValue = day.meals[meal];
                   const recipeMeta = mealValue?.recipe_id ? recipesById.get(mealValue.recipe_id) : null;
                   return {
+                    meal,
                     label: MEAL_LABELS[meal],
                     name: recipeMeta?.name ?? mealValue?.name ?? "Not set",
                     missing: !mealValue,
@@ -630,10 +648,10 @@ export default function WeeklyPlanPage() {
                     </div>
                     <div className="grid gap-2 rounded-2xl border border-dashed border-slate-200 bg-white/70 px-3 py-3 text-xs text-slate-500">
                       {mealSummary.map((item) => (
-                        <div key={item.label} className="flex items-center justify-between">
+                        <div key={item.meal} className="flex items-center justify-between">
                           <span
                             className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
-                              MEAL_BADGES[item.label.toLowerCase()] ?? "bg-slate-100 text-slate-600"
+                              MEAL_BADGES[item.meal] ?? "bg-slate-100 text-slate-600"
                             }`}
                           >
                             {item.label}

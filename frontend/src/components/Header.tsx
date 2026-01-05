@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLanguage } from "./LanguageProvider";
 import { getSupabaseBrowser } from "@/lib/supabase";
 
 export default function Header() {
   const { language, setLanguage } = useLanguage();
   const [scrolled, setScrolled] = useState(false);
+  const headerRef = useRef<HTMLElement | null>(null);
   useEffect(() => {
     const handleScroll = () => {
       setScrolled(window.scrollY > 8);
@@ -17,8 +18,28 @@ export default function Header() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  useEffect(() => {
+    const updateHeaderHeight = () => {
+      if (headerRef.current) {
+        document.documentElement.style.setProperty("--header-height", `${headerRef.current.offsetHeight}px`);
+      }
+    };
+    updateHeaderHeight();
+    let observer: ResizeObserver | undefined;
+    if (typeof ResizeObserver !== "undefined" && headerRef.current) {
+      observer = new ResizeObserver(updateHeaderHeight);
+      observer.observe(headerRef.current);
+    }
+    window.addEventListener("resize", updateHeaderHeight);
+    return () => {
+      window.removeEventListener("resize", updateHeaderHeight);
+      observer?.disconnect();
+    };
+  }, []);
+
   return (
     <header
+      ref={headerRef}
       className={`sticky top-0 z-30 border-b bg-[#f9f4ec]/90 backdrop-blur transition ${
         scrolled ? "border-white/30 shadow-md" : "border-white/60 shadow-none"
       }`}

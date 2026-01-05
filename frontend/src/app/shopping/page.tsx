@@ -1,7 +1,19 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Plus, Minus, ShoppingCart, Pencil, BookOpen, ChevronLeft, ChevronRight, X, ListChecks, ShoppingBasket } from "lucide-react";
+import {
+  Plus,
+  Minus,
+  ShoppingCart,
+  Pencil,
+  BookOpen,
+  ChevronLeft,
+  ChevronRight,
+  X,
+  ListChecks,
+  ShoppingBasket,
+  SlidersHorizontal,
+} from "lucide-react";
 import { useLanguage } from "@/components/LanguageProvider";
 import { useToast } from "@/components/ToastProvider";
 
@@ -230,7 +242,7 @@ export default function ShoppingPage() {
   return (
     <div className="space-y-6">
       <section
-        className={`sticky top-24 z-20 rounded-3xl border bg-white/90 p-4 text-xs backdrop-blur transition hover:shadow-lg hover:ring-2 hover:ring-emerald-200/70 ${
+        className={`sticky top-[calc(var(--header-height)+0.5rem)] z-20 scroll-mt-[calc(var(--header-height)+2rem)] rounded-3xl border bg-white/90 p-4 text-xs backdrop-blur transition hover:shadow-lg hover:ring-2 hover:ring-emerald-200/70 ${
           actionHidden ? "-translate-y-20 opacity-0 pointer-events-none" : "translate-y-0 opacity-100"
         } border-white/70 shadow-sm`}
       >
@@ -263,10 +275,12 @@ export default function ShoppingPage() {
       </section>
       {actionHidden && (
         <button
-          className="fixed right-6 top-28 z-30 rounded-full bg-rose-500 px-3 py-1.5 text-xs font-semibold text-white shadow-lg backdrop-blur hover:bg-rose-600"
+          className="fixed left-4 top-[calc(var(--header-height)+0.5rem+env(safe-area-inset-top))] z-30 inline-flex h-6 w-6 items-center justify-center rounded-full bg-rose-500 text-white shadow-lg backdrop-blur hover:bg-rose-600 sm:left-6"
           onClick={() => setActionHidden(false)}
+          aria-label="Show actions"
+          title="Show actions"
         >
-          Show actions
+          <SlidersHorizontal className="h-3.5 w-3.5" />
         </button>
       )}
 
