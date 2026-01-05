@@ -19,7 +19,8 @@
 4. Set **Site URL** to your Vercel URL (later) and add **Redirect URLs**:
    - `https://<vercel-app>.vercel.app/auth/callback`
 5. Create tables (recipes, recipe_sources, daily_plans, shopping_state, buy_lists, config).
-   - If you add a SQL schema file, run it in **SQL Editor**.
+   - Run `supabase/schema.sql` in **SQL Editor** (Supabase dashboard).
+   - RLS is off by default in this schema; enable policies later if needed.
 6. Optional: set RLS policies or use service role for server-only writes.
 
 ## 3) Vercel Setup (Hosting)
@@ -39,8 +40,10 @@
 3. Confirm login page uses magic link flow and redirects to `/auth/callback`.
 
 ## 5) Data Migration (Local JSON → Supabase)
-1. Add a migration script to read `data/` JSON and insert into Supabase.
-2. Run locally after setting env vars in `.env`.
+1. Use the migration script in `frontend/scripts/migrate_to_supabase.mjs`.\n
+2. Run locally after setting env vars in `.env` or `.env.local`:\n
+   - `cd frontend`\n
+   - `node scripts/migrate_to_supabase.mjs`\n
 3. Verify recipes, daily plans, and shopping state in Supabase dashboard.
 
 ## 6) Ongoing Workflow

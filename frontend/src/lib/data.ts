@@ -162,7 +162,7 @@ export async function getRecipes(): Promise<Recipe[]> {
 export async function getRecipeById(recipeId: string): Promise<Recipe | null> {
   if (isSupabaseEnabled()) {
     const admin = getSupabaseAdmin();
-    const { data } = await admin.from("recipes").select("*").eq("id", recipeId).maybeSingle();
+    const { data } = await admin.from("recipes").select("*").eq("recipe_id", recipeId).maybeSingle();
     if (!data) return null;
     const recipe = recipeFromRow(data);
     if (!recipe.thumbnail_url && recipe.source_url) {
@@ -215,7 +215,7 @@ export async function updateRecipe(recipeId: string, payload: Recipe): Promise<b
   if (isSupabaseEnabled()) {
     const admin = getSupabaseAdmin();
     const row = recipeToRow(normalizeRecipe(payload));
-    const { error } = await admin.from("recipes").update(row).eq("id", recipeId);
+    const { error } = await admin.from("recipes").update(row).eq("recipe_id", recipeId);
     return !error;
   }
   try {
@@ -540,7 +540,7 @@ export async function getRecipeSourceById(recipeId: string): Promise<RecipeSourc
 
 function recipeFromRow(row: any): Recipe {
   return normalizeRecipe({
-    recipe_id: row.id,
+    recipe_id: row.recipe_id,
     name: row.name,
     meal_types: row.meal_types ?? [],
     servings: row.servings ?? undefined,
@@ -557,7 +557,7 @@ function recipeFromRow(row: any): Recipe {
 
 function recipeToRow(recipe: Recipe) {
   return {
-    id: recipe.recipe_id,
+    recipe_id: recipe.recipe_id,
     name: recipe.name,
     meal_types: recipe.meal_types ?? [],
     servings: recipe.servings ?? null,
