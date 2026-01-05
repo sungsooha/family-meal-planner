@@ -19,7 +19,13 @@ type Recipe = {
   instructions?: string[];
   instructions_original?: string[];
 };
-type Meal = { recipe_id?: string; name?: string; locked?: boolean; ingredients?: Ingredient[] } | null;
+type Meal = {
+  recipe_id?: string;
+  name?: string;
+  locked?: boolean;
+  completed?: boolean;
+  ingredients?: Ingredient[];
+} | null;
 type WeeklyPlan = { start_date: string; days: Array<{ date: string; meals: Record<string, Meal> }> };
 
 const MEAL_LABELS: Record<string, string> = {
@@ -61,6 +67,7 @@ export default function WeeklyPlanPage() {
   const [sourceUrlInput, setSourceUrlInput] = useState("");
   const [activeRecipeId, setActiveRecipeId] = useState<string | null>(null);
   const [activeRecipe, setActiveRecipe] = useState<Recipe | null>(null);
+  const [activeMealContext, setActiveMealContext] = useState<{ date: string; meal: string } | null>(null);
   const { language } = useLanguage();
   const [collapsedDays, setCollapsedDays] = useState<Record<string, boolean>>({});
   const [collapsePast, setCollapsePast] = useState(true);
@@ -286,6 +293,10 @@ export default function WeeklyPlanPage() {
 
   const ingredientList = language === "original" ? activeRecipe?.ingredients_original : activeRecipe?.ingredients;
   const instructionList = language === "original" ? activeRecipe?.instructions_original : activeRecipe?.instructions;
+  const activeDay = activeMealContext?.date
+    ? plan?.days.find((day) => day.date === activeMealContext.date) ?? null
+    : null;
+  const activeDayLabel = activeMealContext?.date ? dayName(activeMealContext.date) : "";
   const youtubeId = useMemo(() => {
     const url = activeRecipe?.source_url;
     if (!url) return null;
@@ -468,10 +479,17 @@ export default function WeeklyPlanPage() {
                     const recipeMeta = entry?.recipe_id ? recipesById.get(entry.recipe_id) : null;
                     const thumbnail = recipeMeta?.thumbnail_url;
                     const displayName = recipeMeta?.name ?? entry?.name;
+                    const isSelected =
+                      !!entry?.recipe_id &&
+                      entry.recipe_id === activeRecipeId &&
+                      activeMealContext?.date === day.date &&
+                      activeMealContext?.meal === meal;
                     return (
                       <div
                         key={meal}
-                        className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-slate-50/80 px-4 py-3 transition hover:border-slate-200 hover:bg-white hover:shadow-md hover:ring-1 hover:ring-emerald-200/70"
+                        className={`flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-slate-50/80 px-4 py-3 transition hover:border-slate-200 hover:bg-white hover:shadow-md hover:ring-1 hover:ring-emerald-200/70 ${
+                          isSelected ? "border-rose-300 bg-rose-100/70 shadow-sm ring-2 ring-rose-200/70" : ""
+                        }`}
                       >
                         <div className="flex items-center gap-3">
                           {thumbnail ? (
@@ -490,9 +508,16 @@ export default function WeeklyPlanPage() {
                             {displayName ? (
                               <button
                                 className={`text-left text-xs font-medium hover:text-slate-700 ${
-                                  entry.completed ? "text-slate-400 line-through" : "text-slate-900"
+                                  entry.completed
+                                    ? "text-slate-400 line-through"
+                                    : isSelected
+                                      ? "text-rose-700"
+                                      : "text-slate-900"
                                 }`}
-                                onClick={() => setActiveRecipeId(entry.recipe_id ?? null)}
+                                onClick={() => {
+                                  setActiveRecipeId(entry.recipe_id ?? null);
+                                  setActiveMealContext({ date: day.date, meal });
+                                }}
                               >
                                 {displayName}
                               </button>
@@ -796,6 +821,11 @@ export default function WeeklyPlanPage() {
             <div>
               <p className="text-xs uppercase tracking-wide text-slate-400">Recipe details</p>
               <h3 className="text-lg font-semibold text-slate-900">{activeRecipe.name}</h3>
+              {activeMealContext ? (
+                <p className="mt-1 text-xs font-semibold text-slate-500">
+                  {activeDayLabel} · {MEAL_LABELS[activeMealContext.meal] ?? activeMealContext.meal}
+                </p>
+              ) : null}
               <p className="text-sm text-slate-500">
                 {(activeRecipe.meal_types ?? []).join(", ") || "Flexible"} · {activeRecipe.servings ?? "?"} servings
               </p>
@@ -804,11 +834,48 @@ export default function WeeklyPlanPage() {
               onClick={() => {
                 setDrawerOpen(false);
                 setTimeout(() => setActiveRecipeId(null), 250);
+                setActiveMealContext(null);
               }}
             >
               <X className="h-4 w-4 text-slate-400" />
             </button>
           </div>
+          {activeDay ? (
+            <div className="mt-4 rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Day menu</p>
+              <div className="mt-2 grid gap-2 sm:grid-cols-3">
+                {mealTypeOptions.map((meal) => {
+                  const entry = activeDay.meals[meal];
+                  const recipeMeta = entry?.recipe_id ? recipesById.get(entry.recipe_id) : null;
+                  const label = recipeMeta?.name ?? entry?.name;
+                  const isActive = activeMealContext?.meal === meal;
+                  return (
+                    <button
+                      key={meal}
+                      className={`rounded-xl border px-3 py-2 text-left text-[11px] transition ${
+                        isActive
+                          ? "border-rose-200 bg-rose-50 text-rose-700"
+                          : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+                      }`}
+                      onClick={() => {
+                        if (entry?.recipe_id) {
+                          setActiveRecipeId(entry.recipe_id);
+                          setActiveMealContext({ date: activeDay.date, meal });
+                        } else {
+                          setSelectMeal({ date: activeDay.date, meal });
+                          setDrawerOpen(false);
+                          setTimeout(() => setActiveRecipeId(null), 250);
+                        }
+                      }}
+                    >
+                      <span className="block font-semibold">{MEAL_LABELS[meal]}</span>
+                      <span className="mt-0.5 block text-slate-500">{label ?? "Add recipe"}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
           {youtubeId && (
             <div className="mt-4 overflow-hidden rounded-2xl border border-slate-100">
               <iframe
