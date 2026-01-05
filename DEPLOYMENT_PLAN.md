@@ -26,14 +26,19 @@
 ## 3) Vercel Setup (Hosting)
 1. Import the GitHub repo into Vercel.
 2. Set **Root Directory** to `frontend/`.
-3. Add environment variables in Vercel:
+3. Configure build settings:
+   - Framework Preset: `Next.js`
+   - Build Command: `npm run build`
+   - Output Directory: `.next`
+   - Install Command: `npm install`
+4. Add environment variables in Vercel:
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
    - `SUPABASE_SERVICE_ROLE_KEY`
    - `ALLOWED_EMAILS` (comma-separated allowlist, optional)
    - Any other required vars
-4. Deploy and copy the public URL.
-5. Add the Vercel URL to Supabase **Site URL** and **Redirect URLs**.
+5. Deploy and copy the public URL.
+6. Add the Vercel URL to Supabase **Site URL** and **Redirect URLs**.
 
 ## 4) Auth & Allowlist
 1. Decide which emails are allowed (family emails).
@@ -52,11 +57,18 @@
 - Deployments: push to `main` → Vercel auto-deploys.
 - Database updates: use Supabase SQL editor or migration scripts.
 
+## Post-Deploy Smoke Test
+1. Visit the Vercel URL and confirm it redirects to `/login`.
+2. Sign in with an allowlisted email and confirm redirect back to `/`.
+3. Check `/recipes` and `/shopping` load data.
+4. Click a recipe and confirm details + video render.
+5. Create a buy list snapshot from Shopping and confirm it appears in `/shopping/saved`.
+
 ## Checklist
-- [ ] GitHub repo created and pushed
-- [ ] Supabase project created
-- [ ] Tables created (schema loaded)
+- [x] GitHub repo created and pushed
+- [x] Supabase project created
+- [x] Tables created (schema loaded)
 - [ ] Env vars set in Vercel
 - [ ] Auth redirect URL configured
-- [ ] Migration script run
+- [x] Migration script run
 - [ ] App accessible and login verified
