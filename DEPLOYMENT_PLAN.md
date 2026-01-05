@@ -16,8 +16,9 @@
    - `Anon key` → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
    - `Service role key` → `SUPABASE_SERVICE_ROLE_KEY`
 3. Enable email magic link auth in **Authentication → Providers**.
-4. Set **Site URL** to your Vercel URL (later) and add **Redirect URLs**:
+4. Set **Site URL** to your Vercel URL (production default) and add **Redirect URLs**:
    - `https://<vercel-app>.vercel.app/auth/callback`
+   - `http://localhost:3000/auth/callback` (local dev)
 5. Create tables (recipes, recipe_sources, daily_plans, shopping_state, buy_lists, config).
    - Run `supabase/schema.sql` in **SQL Editor** (Supabase dashboard).
    - RLS is off by default in this schema; enable policies later if needed.
@@ -38,12 +39,17 @@
    - `ALLOWED_EMAILS` (comma-separated allowlist, optional)
    - Any other required vars
 5. Deploy and copy the public URL.
-6. Add the Vercel URL to Supabase **Site URL** and **Redirect URLs**.
+6. Add the Vercel URL to Supabase **Site URL** and **Redirect URLs** (localhost stays allowed).
 
 ## 4) Auth & Allowlist
 1. Decide which emails are allowed (family emails).
-2. Implement allowlist check in `frontend/middleware.ts`.
-3. Confirm login page uses magic link flow and redirects to `/auth/callback`.
+2. Set `ALLOWED_EMAILS` (comma-separated) in local `.env.local` and Vercel env vars.
+3. Allowlist is enforced in `frontend/src/proxy.ts` and `frontend/src/app/api/auth/request-link/route.ts`.
+4. Confirm login page uses magic link flow and redirects to `/auth/callback`.
+
+## 4.1) Auth Redirect Notes
+- **Site URL** only accepts one value; keep it as production.
+- Local dev works because the app passes `redirectTo=http://localhost:3000/auth/callback`, which must be in **Redirect URLs**.
 
 ## 5) Data Migration (Local JSON → Supabase)
 1. Use the migration script in `frontend/scripts/migrate_to_supabase.mjs`.
