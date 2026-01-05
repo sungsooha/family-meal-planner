@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 import type { ChangeEvent } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Filter, Upload, X, Shuffle } from "lucide-react";
@@ -25,7 +24,6 @@ type Recipe = {
 const MEAL_TYPES = ["breakfast", "lunch", "dinner", "snack"] as const;
 
 export default function RecipesPage() {
-  const searchParams = useSearchParams();
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [filters, setFilters] = useState<string[]>([]);
   const [jsonInput, setJsonInput] = useState("");
@@ -45,10 +43,11 @@ export default function RecipesPage() {
   }, []);
 
   useEffect(() => {
-    if (searchParams.get("import") === "1") {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("import") === "1") {
       setShowImport(true);
     }
-  }, [searchParams]);
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => {

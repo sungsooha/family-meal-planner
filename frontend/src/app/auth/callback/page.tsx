@@ -1,18 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
 import { getSupabaseBrowser } from "@/lib/supabase";
 
 export default function AuthCallbackPage() {
-  const searchParams = useSearchParams();
   const [status, setStatus] = useState("Signing you in...");
 
   useEffect(() => {
-    const nextParam = searchParams.get("next") ?? "/";
     const handleCallback = async () => {
       const supabase = getSupabaseBrowser();
       const url = new URL(window.location.href);
+      const nextParam = url.searchParams.get("next") ?? "/";
       const code = url.searchParams.get("code");
       const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
       let errorMessage: string | null = null;
@@ -47,7 +45,7 @@ export default function AuthCallbackPage() {
     };
 
     handleCallback();
-  }, [searchParams]);
+  }, []);
 
   return (
     <div className="mx-auto mt-20 max-w-md rounded-3xl border border-white/70 bg-white/80 p-6 text-sm text-slate-600 shadow-sm">

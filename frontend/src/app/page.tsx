@@ -508,14 +508,14 @@ export default function WeeklyPlanPage() {
                             {displayName ? (
                               <button
                                 className={`text-left text-xs font-medium hover:text-slate-700 ${
-                                  entry.completed
+                                  entry?.completed
                                     ? "text-slate-400 line-through"
                                     : isSelected
                                       ? "text-rose-700"
                                       : "text-slate-900"
                                 }`}
                                 onClick={() => {
-                                  setActiveRecipeId(entry.recipe_id ?? null);
+                                  setActiveRecipeId(entry?.recipe_id ?? null);
                                   setActiveMealContext({ date: day.date, meal });
                                 }}
                               >
@@ -535,14 +535,14 @@ export default function WeeklyPlanPage() {
                           {displayName ? (
                             <button
                               className={`rounded-full border px-3 py-1 text-xs ${
-                                entry.completed
+                                entry?.completed
                                   ? "border-rose-200 bg-rose-50 text-rose-700"
                                   : "border-slate-200 bg-white text-slate-500"
                               }`}
                               onClick={() => handleToggleComplete(day.date, meal)}
                             >
                               <Heart className="mr-1 inline h-3 w-3" />
-                              {entry.completed ? "Done" : "Mark done"}
+                              {entry?.completed ? "Done" : "Mark done"}
                             </button>
                           ) : null}
                           {entry ? (

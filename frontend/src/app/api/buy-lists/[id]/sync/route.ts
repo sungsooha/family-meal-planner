@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getBuyListById, getShoppingState, getWeeklyPlanForDate, saveBuyList } from "@/lib/data";
+import { getBuyListById, getShoppingState, getWeeklyPlanForDate, saveBuyList, type BuyListItem } from "@/lib/data";
 import { computeShoppingList, itemKey } from "@/lib/shopping";
 
 type Params = { params: Promise<{ id: string }> };
@@ -25,7 +25,7 @@ export async function POST(_: Request, { params }: Params) {
       }
     }
   });
-  const selectedItems = [];
+  const selectedItems: BuyListItem[] = [];
   Object.entries(state).forEach(([key, stored]) => {
     const weekly = weeklyByKey.get(key);
     if (weekly) {

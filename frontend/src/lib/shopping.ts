@@ -1,6 +1,6 @@
 import { getConfig, getRecipes, getWeeklyPlanForDate, saveShoppingState, getShoppingState, Recipe, WeeklyPlan } from "./data";
 
-type ShoppingItem = {
+export type ShoppingItem = {
   name: string;
   unit: string;
   quantity: number | string;
@@ -77,7 +77,7 @@ export function itemKey(name: string, unit: string, language?: string): string {
   return `${name}|${unit}`;
 }
 
-function mealIngredients(recipe: Recipe, language: string): Recipe["ingredients"] {
+function mealIngredients(recipe: Recipe, language: string): NonNullable<Recipe["ingredients"]> {
   if (language === "original") return recipe.ingredients_original ?? recipe.ingredients ?? [];
   return recipe.ingredients ?? recipe.ingredients_original ?? [];
 }

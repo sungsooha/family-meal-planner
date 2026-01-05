@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import { getWeeklyPlanForDate, getShoppingState, saveShoppingState } from "@/lib/data";
-import { computeShoppingList, itemKey, syncShoppingState } from "@/lib/shopping";
+import { computeShoppingList, itemKey, syncShoppingState, type ShoppingItem } from "@/lib/shopping";
+
+type ShoppingItemResponse = ShoppingItem & {
+  default_quantity: number | string;
+  default_unit: string;
+};
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -20,7 +25,7 @@ export async function GET(request: Request) {
     }
   });
 
-  const shoppingItems = [];
+  const shoppingItems: ShoppingItemResponse[] = [];
   Object.entries(state).forEach(([key, stored]) => {
     const weekly = weeklyByKey.get(key);
     if (weekly) {

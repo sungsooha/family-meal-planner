@@ -200,7 +200,7 @@ export async function addRecipe(payload: Recipe): Promise<{ ok: boolean; error?:
   if (existing) {
     return { ok: false, error: "Recipe ID already exists." };
   }
-  const files = await fs.readdir(RECIPES_DIR).catch(() => []);
+  const files = await fs.readdir(RECIPES_DIR).catch(() => [] as string[]);
   let baseName = safeFilename(payload.name);
   if (!baseName.endsWith(".json")) baseName = `${baseName}.json`;
   let fileName = baseName;
