@@ -30,6 +30,7 @@
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
    - `SUPABASE_SERVICE_ROLE_KEY`
+   - `ALLOWED_EMAILS` (comma-separated allowlist, optional)
    - Any other required vars
 4. Deploy and copy the public URL.
 5. Add the Vercel URL to Supabase **Site URL** and **Redirect URLs**.
@@ -40,10 +41,10 @@
 3. Confirm login page uses magic link flow and redirects to `/auth/callback`.
 
 ## 5) Data Migration (Local JSON → Supabase)
-1. Use the migration script in `frontend/scripts/migrate_to_supabase.mjs`.\n
-2. Run locally after setting env vars in `.env` or `.env.local`:\n
-   - `cd frontend`\n
-   - `node scripts/migrate_to_supabase.mjs`\n
+1. Use the migration script in `frontend/scripts/migrate_to_supabase.mjs`.
+2. Run locally after setting env vars in `.env` or `.env.local`:
+   - `cd frontend`
+   - `node scripts/migrate_to_supabase.mjs`
 3. Verify recipes, daily plans, and shopping state in Supabase dashboard.
 
 ## 6) Ongoing Workflow

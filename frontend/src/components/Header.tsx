@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useLanguage } from "./LanguageProvider";
+import { getSupabaseBrowser } from "@/lib/supabase";
 
 export default function Header() {
   const { language, setLanguage } = useLanguage();
@@ -53,6 +54,20 @@ export default function Header() {
         <Link className="rounded-full border border-slate-200 bg-white/80 px-4 py-2 shadow-sm hover:text-slate-900" href="/shopping">
           Shopping
         </Link>
+        <button
+          className="rounded-full border border-slate-200 bg-white/80 px-4 py-2 shadow-sm hover:text-slate-900"
+          onClick={async () => {
+            try {
+              const supabase = getSupabaseBrowser();
+              await supabase.auth.signOut();
+              window.location.href = "/login";
+            } catch {
+              window.location.href = "/login";
+            }
+          }}
+        >
+          Sign out
+        </button>
       </div>
       </div>
     </header>
