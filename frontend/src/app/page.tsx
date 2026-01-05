@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   CalendarDays,
   Lock,
@@ -69,6 +69,8 @@ export default function WeeklyPlanPage() {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [startDate, setStartDate] = useState<string>("");
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickerPos, setPickerPos] = useState<{ top: number; left: number } | null>(null);
+  const [pickerReady, setPickerReady] = useState(false);
   const [calendarMonth, setCalendarMonth] = useState<Date>(new Date());
   const [plannedDates, setPlannedDates] = useState<Set<string>>(new Set());
   const [selectMeal, setSelectMeal] = useState<{ date: string; meal: string } | null>(null);
@@ -88,6 +90,8 @@ export default function WeeklyPlanPage() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [actionHidden, setActionHidden] = useState(false);
   const lastScrollY = useRef(0);
+  const pickerButtonRef = useRef<HTMLButtonElement | null>(null);
+  const pickerPanelRef = useRef<HTMLDivElement | null>(null);
   const recipesById = useMemo(() => new Map(recipes.map((recipe) => [recipe.recipe_id, recipe])), [recipes]);
 
   const loadPlan = useCallback(async (targetDate?: string) => {
@@ -169,6 +173,39 @@ export default function WeeklyPlanPage() {
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+
+  useLayoutEffect(() => {
+    if (!pickerOpen) return;
+    setPickerReady(false);
+    const updatePosition = () => {
+      if (!pickerButtonRef.current || !pickerPanelRef.current) return;
+      const buttonRect = pickerButtonRef.current.getBoundingClientRect();
+      const panelRect = pickerPanelRef.current.getBoundingClientRect();
+      const margin = 16;
+      const belowTop = buttonRect.bottom + 8;
+      const aboveTop = buttonRect.top - panelRect.height - 8;
+      let top = belowTop;
+      if (belowTop + panelRect.height > window.innerHeight - margin && aboveTop >= margin) {
+        top = aboveTop;
+      } else if (belowTop + panelRect.height > window.innerHeight - margin) {
+        top = Math.max(margin, window.innerHeight - margin - panelRect.height);
+      }
+      let left = buttonRect.left;
+      if (left + panelRect.width > window.innerWidth - margin) {
+        left = window.innerWidth - margin - panelRect.width;
+      }
+      left = Math.max(margin, left);
+      setPickerPos({ top, left });
+      setPickerReady(true);
+    };
+    updatePosition();
+    window.addEventListener("resize", updatePosition);
+    window.addEventListener("scroll", updatePosition, { passive: true });
+    return () => {
+      window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition);
+    };
+  }, [pickerOpen]);
 
   const mealTypeOptions = useMemo(() => ["breakfast", "lunch", "dinner"], []);
 
@@ -373,76 +410,83 @@ export default function WeeklyPlanPage() {
           >
             <Wand2 className="h-4 w-4" /> Auto-generate
           </button>
-          <div className="relative">
+          <div>
             <button
               className="flex items-center rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm hover:text-slate-900"
               onClick={() => setPickerOpen((prev) => !prev)}
+              ref={pickerButtonRef}
             >
               <CalendarDays className="h-4 w-4" />
               {startDate || "Pick start date"}
             </button>
-            {pickerOpen && (
-              <div className="absolute right-0 z-20 mt-2 w-72 rounded-2xl border border-slate-200 bg-white p-4 shadow-lg">
-                <div className="flex items-center justify-between pb-3 text-sm text-slate-600">
-                  <button
-                    className="rounded-full border border-slate-200 bg-white px-2 py-1 text-xs"
-                    onClick={() =>
-                      setCalendarMonth(
-                        (prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1),
-                      )
-                    }
-                  >
-                    Prev
-                  </button>
-                  <span className="font-medium text-slate-700">
-                    {calendarMonth.toLocaleDateString("en-US", { month: "long", year: "numeric" })}
-                  </span>
-                  <button
-                    className="rounded-full border border-slate-200 bg-white px-2 py-1 text-xs"
-                    onClick={() =>
-                      setCalendarMonth(
-                        (prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1),
-                      )
-                    }
-                  >
-                    Next
-                  </button>
-                </div>
-                <div className="grid grid-cols-7 gap-1 text-xs text-slate-400">
-                  {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((label) => (
-                    <div key={label} className="text-center">
-                      {label}
-                    </div>
-                  ))}
-                </div>
-                <div className="mt-2 grid grid-cols-7 gap-1 text-sm">
-                  {buildCalendar(calendarMonth).map((cell, idx) => {
-                    if (!cell.inMonth) {
-                      return <div key={`empty-${idx}`} />;
-                    }
-                    const isSelected = cell.date === startDate;
-                    const hasPlan = plannedDates.has(cell.date);
-                    return (
-                      <button
-                        key={cell.date}
-                        className={`relative flex h-9 w-9 items-center justify-center rounded-full text-sm transition ${
-                          isSelected ? "bg-slate-900 text-white" : "text-slate-700 hover:bg-slate-100"
-                        }`}
-                        onClick={() => handleStartDate(cell.date)}
-                      >
-                        {cell.label}
-                        {hasPlan && (
-                          <span className="absolute -bottom-0.5 h-1.5 w-1.5 rounded-full bg-amber-400" />
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
           </div>
         </div>
       </section>
+      {pickerOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-slate-900/20"
+          onClick={() => setPickerOpen(false)}
+        >
+          <div
+            ref={pickerPanelRef}
+            className={`absolute w-[calc(100%-2rem)] max-w-sm rounded-2xl border border-slate-200 bg-white p-4 shadow-lg sm:w-72 ${
+              pickerReady ? "opacity-100" : "pointer-events-none opacity-0"
+            }`}
+            style={pickerPos ? { top: pickerPos.top, left: pickerPos.left } : { top: 0, left: 0 }}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-3 text-sm text-slate-600">
+              <button
+                className="rounded-full border border-slate-200 bg-white px-2 py-1 text-xs"
+                onClick={() =>
+                  setCalendarMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))
+                }
+              >
+                Prev
+              </button>
+              <span className="font-medium text-slate-700">
+                {calendarMonth.toLocaleDateString("en-US", { month: "long", year: "numeric" })}
+              </span>
+              <button
+                className="rounded-full border border-slate-200 bg-white px-2 py-1 text-xs"
+                onClick={() =>
+                  setCalendarMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))
+                }
+              >
+                Next
+              </button>
+            </div>
+            <div className="grid grid-cols-7 gap-1 text-xs text-slate-400">
+              {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((label) => (
+                <div key={label} className="text-center">
+                  {label}
+                </div>
+              ))}
+            </div>
+            <div className="mt-2 grid grid-cols-7 gap-1 text-sm">
+              {buildCalendar(calendarMonth).map((cell, idx) => {
+                if (!cell.inMonth) {
+                  return <div key={`empty-${idx}`} />;
+                }
+                const isSelected = cell.date === startDate;
+                const hasPlan = plannedDates.has(cell.date);
+                return (
+                  <button
+                    key={cell.date}
+                    className={`relative flex h-9 w-9 items-center justify-center rounded-full text-sm transition ${
+                      isSelected ? "bg-slate-900 text-white" : "text-slate-700 hover:bg-slate-100"
+                    }`}
+                    onClick={() => handleStartDate(cell.date)}
+                  >
+                    {cell.label}
+                    {hasPlan && <span className="absolute -bottom-0.5 h-1.5 w-1.5 rounded-full bg-amber-400" />}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
       {actionHidden && (
         <button
           className="fixed left-4 top-[calc(var(--header-height)+0.5rem+env(safe-area-inset-top))] z-30 inline-flex h-6 w-6 items-center justify-center rounded-full bg-rose-500 text-white shadow-lg backdrop-blur hover:bg-rose-600 sm:left-6"
