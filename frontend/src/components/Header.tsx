@@ -1,12 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useLanguage } from "./LanguageProvider";
 import { getSupabaseBrowser } from "@/lib/supabase";
 
 export default function Header() {
   const { language, setLanguage } = useLanguage();
+  const pathname = usePathname();
   const [scrolled, setScrolled] = useState(false);
   const headerRef = useRef<HTMLElement | null>(null);
   useEffect(() => {
@@ -66,13 +68,34 @@ export default function Header() {
           <option value="en">English</option>
           <option value="original">Original</option>
         </select>
-        <Link className="rounded-full border border-slate-200 bg-white/80 px-4 py-2 shadow-sm hover:text-slate-900" href="/">
+        <Link
+          className={`rounded-full border px-4 py-2 shadow-sm hover:text-slate-900 ${
+            pathname === "/"
+              ? "border-emerald-200 bg-emerald-100 text-emerald-900"
+              : "border-slate-200 bg-white/80 text-slate-600"
+          }`}
+          href="/"
+        >
           Weekly Plan
         </Link>
-        <Link className="rounded-full border border-slate-200 bg-white/80 px-4 py-2 shadow-sm hover:text-slate-900" href="/recipes">
+        <Link
+          className={`rounded-full border px-4 py-2 shadow-sm hover:text-slate-900 ${
+            pathname?.startsWith("/recipes")
+              ? "border-emerald-200 bg-emerald-100 text-emerald-900"
+              : "border-slate-200 bg-white/80 text-slate-600"
+          }`}
+          href="/recipes"
+        >
           Recipes
         </Link>
-        <Link className="rounded-full border border-slate-200 bg-white/80 px-4 py-2 shadow-sm hover:text-slate-900" href="/shopping">
+        <Link
+          className={`rounded-full border px-4 py-2 shadow-sm hover:text-slate-900 ${
+            pathname?.startsWith("/shopping")
+              ? "border-emerald-200 bg-emerald-100 text-emerald-900"
+              : "border-slate-200 bg-white/80 text-slate-600"
+          }`}
+          href="/shopping"
+        >
           Shopping
         </Link>
         <button
