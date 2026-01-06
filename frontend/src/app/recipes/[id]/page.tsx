@@ -38,22 +38,33 @@ export default function RecipeDetailPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState<Recipe | null>(null);
   const [actionHidden, setActionHidden] = useState(false);
-  const lastScrollY = useRef(0);
+  const [actionPinned, setActionPinned] = useState(false);
+  const pinnedScroll = useRef(0);
 
   useEffect(() => {
     const handleScroll = () => {
       const current = window.scrollY;
-      if (current > 160 && current > lastScrollY.current + 6) {
-        setActionHidden(true);
-      } else if (current < lastScrollY.current - 6) {
+      const atTop = current <= 120;
+      if (atTop) {
         setActionHidden(false);
+        if (actionPinned) setActionPinned(false);
+        return;
       }
-      lastScrollY.current = current;
+      if (actionPinned) {
+        if (Math.abs(current - pinnedScroll.current) > 24) {
+          setActionPinned(false);
+          setActionHidden(true);
+        } else {
+          setActionHidden(false);
+        }
+        return;
+      }
+      setActionHidden(true);
     };
     handleScroll();
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
+  }, [actionPinned]);
 
   useEffect(() => {
     if (recipe) {
@@ -162,7 +173,11 @@ export default function RecipeDetailPage() {
       {actionHidden && (
         <button
           className="fixed left-4 top-[calc(var(--header-height)+0.5rem+env(safe-area-inset-top))] z-30 inline-flex h-6 w-6 items-center justify-center rounded-full bg-rose-500 text-white shadow-lg backdrop-blur hover:bg-rose-600 sm:left-6"
-          onClick={() => setActionHidden(false)}
+          onClick={() => {
+            setActionHidden(false);
+            setActionPinned(true);
+            pinnedScroll.current = window.scrollY;
+          }}
           aria-label="Show actions"
           title="Show actions"
         >
