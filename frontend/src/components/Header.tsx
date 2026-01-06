@@ -46,22 +46,17 @@ export default function Header() {
         scrolled ? "border-white/30 shadow-md" : "border-white/60 shadow-none"
       }`}
     >
-      <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-4 px-6 pb-6 pt-10">
-        <div>
-        <h1 className="text-2xl font-semibold text-slate-900">Ha Family Table</h1>
-        <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Weekly Meal Planner</p>
-        <p className="mt-1 text-xs text-rose-500">Made for the Ha family</p>
-        </div>
-        <div className="relative hidden flex-[1.2] md:block">
+      <div className="mx-auto flex w-full max-w-6xl flex-col items-start justify-between gap-2 px-6 pb-2 pt-2 md:flex-row md:items-center">
+        <div className="flex items-center">
           <img
             src="/ha_family_logo.png"
             alt="Ha family illustration"
-            className="absolute -left-7 top-[60%] h-52 w-auto -translate-y-1/2"
+            className="h-24 w-auto sm:h-28 md:h-32 lg:h-36"
           />
         </div>
-      <div className="flex flex-wrap items-center gap-3 text-sm font-medium text-slate-600">
+      <div className="flex w-full flex-wrap items-center gap-2 text-xs font-medium text-slate-600 md:w-auto">
         <select
-          className="rounded-full border border-slate-200 bg-white/80 px-4 py-2 text-sm shadow-sm"
+          className="rounded-full border border-slate-200 bg-white/80 px-2.5 py-1 text-[11px] shadow-sm"
           value={language}
           onChange={(event) => setLanguage(event.target.value as "en" | "original")}
         >
@@ -69,7 +64,7 @@ export default function Header() {
           <option value="original">Original</option>
         </select>
         <Link
-          className={`rounded-full border px-4 py-2 shadow-sm hover:text-slate-900 ${
+          className={`rounded-full border px-2.5 py-1 text-[11px] shadow-sm hover:text-slate-900 ${
             pathname === "/"
               ? "border-emerald-200 bg-emerald-100 text-emerald-900"
               : "border-slate-200 bg-white/80 text-slate-600"
@@ -79,7 +74,7 @@ export default function Header() {
           Weekly Plan
         </Link>
         <Link
-          className={`rounded-full border px-4 py-2 shadow-sm hover:text-slate-900 ${
+          className={`rounded-full border px-2.5 py-1 text-[11px] shadow-sm hover:text-slate-900 ${
             pathname?.startsWith("/recipes")
               ? "border-emerald-200 bg-emerald-100 text-emerald-900"
               : "border-slate-200 bg-white/80 text-slate-600"
@@ -89,7 +84,7 @@ export default function Header() {
           Recipes
         </Link>
         <Link
-          className={`rounded-full border px-4 py-2 shadow-sm hover:text-slate-900 ${
+          className={`rounded-full border px-2.5 py-1 text-[11px] shadow-sm hover:text-slate-900 ${
             pathname?.startsWith("/shopping")
               ? "border-emerald-200 bg-emerald-100 text-emerald-900"
               : "border-slate-200 bg-white/80 text-slate-600"
@@ -99,7 +94,7 @@ export default function Header() {
           Shopping
         </Link>
         <button
-          className="rounded-full border border-slate-200 bg-white/80 px-4 py-2 shadow-sm hover:text-slate-900"
+          className="rounded-full border border-slate-200 bg-white/80 px-2.5 py-1 text-[11px] shadow-sm hover:text-slate-900"
           onClick={async () => {
             try {
               const supabase = getSupabaseBrowser();

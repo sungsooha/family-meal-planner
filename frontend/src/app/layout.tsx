@@ -27,7 +27,8 @@ export default function RootLayout({
               <Header />
               <main className="relative mx-auto w-full max-w-6xl px-6 pb-16">{children}</main>
               <footer className="relative mx-auto w-full max-w-6xl px-6 pb-8 text-xs text-slate-500">
-                Copyright (c) 2026 Ha Family
+                <p>Made for the Ha family</p>
+                <p>Copyright (c) 2026 Ha Family</p>
               </footer>
             </div>
           </ToastProvider>
