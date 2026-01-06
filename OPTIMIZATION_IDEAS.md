@@ -6,8 +6,8 @@
 - [x] Warm cache on hover for recipe cards to make detail navigation instantaneous.
 
 ## Image & Asset Loading
-- Use `next/image` (or consistent `loading="lazy"`) for thumbnails.
-- Reuse browser cache by keeping thumbnail URLs stable (avoid query churn).
+- [x] Use `next/image` (or consistent `loading="lazy"`) for thumbnails.
+- [x] Reuse browser cache by keeping thumbnail URLs stable (avoid query churn).
 
 ## API & Network
 - Add cache headers to API responses (`s-maxage` + `stale-while-revalidate`) to reduce cold-start latency.
