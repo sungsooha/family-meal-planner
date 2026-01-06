@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import useSWR from "swr";
-import { X, Pencil, RefreshCw, Lock, Unlock, Trash2, Printer, SlidersHorizontal } from "lucide-react";
+import { X, Pencil, RefreshCw, Lock, Unlock, Trash2, Printer } from "lucide-react";
 import { useToast } from "@/components/ToastProvider";
 
 type BuyListItem = {
@@ -27,9 +27,6 @@ export default function SavedBuyListsPage() {
   const [editing, setEditing] = useState<BuyList | null>(null);
   const [draftItems, setDraftItems] = useState<BuyListItem[]>([]);
   const { showToast } = useToast();
-  const [actionHidden, setActionHidden] = useState(false);
-  const [actionPinned, setActionPinned] = useState(false);
-  const pinnedScroll = useRef(0);
 
   const { data: listsData, mutate: mutateLists } = useSWR<{ lists: BuyList[] }>("/api/buy-lists");
 
@@ -38,31 +35,6 @@ export default function SavedBuyListsPage() {
       setLists(listsData.lists);
     }
   }, [listsData]);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      const current = window.scrollY;
-      const atTop = current <= 120;
-      if (atTop) {
-        setActionHidden(false);
-        if (actionPinned) setActionPinned(false);
-        return;
-      }
-      if (actionPinned) {
-        if (Math.abs(current - pinnedScroll.current) > 24) {
-          setActionPinned(false);
-          setActionHidden(true);
-        } else {
-          setActionHidden(false);
-        }
-        return;
-      }
-      setActionHidden(true);
-    };
-    handleScroll();
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [actionPinned]);
 
   const handleSync = async (list: BuyList) => {
     const response = await fetch(`/api/buy-lists/${list.id}/sync`, { method: "POST" });
@@ -155,30 +127,12 @@ export default function SavedBuyListsPage() {
 
   return (
     <div className="space-y-6">
-      <section
-        className={`sticky top-[calc(var(--header-height)+0.5rem)] z-20 scroll-mt-[calc(var(--header-height)+2rem)] rounded-3xl border bg-white/90 p-4 text-xs backdrop-blur transition hover:shadow-lg hover:ring-2 hover:ring-emerald-200/70 ${
-          actionHidden ? "-translate-y-20 opacity-0 pointer-events-none" : "translate-y-0 opacity-100"
-        } border-white/70 shadow-sm`}
-      >
+      <section className="sticky top-[calc(var(--header-height)+0.5rem)] z-20 scroll-mt-[calc(var(--header-height)+2rem)] rounded-3xl border border-white/70 bg-white/95 p-4 text-xs shadow-sm backdrop-blur">
         <div>
           <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Saved buy lists</p>
           <h2 className="text-lg font-semibold text-slate-900">Past shopping sessions</h2>
         </div>
       </section>
-      {actionHidden && (
-        <button
-          className="fixed left-4 top-[calc(var(--header-height)+0.5rem+env(safe-area-inset-top))] z-30 inline-flex h-6 w-6 items-center justify-center rounded-full bg-rose-500 text-white shadow-lg backdrop-blur hover:bg-rose-600 sm:left-6"
-          onClick={() => {
-            setActionHidden(false);
-            setActionPinned(true);
-            pinnedScroll.current = window.scrollY;
-          }}
-          aria-label="Show actions"
-          title="Show actions"
-        >
-          <SlidersHorizontal className="h-3.5 w-3.5" />
-        </button>
-      )}
 
       <section className="grid gap-4">
         {lists.map((list) => (

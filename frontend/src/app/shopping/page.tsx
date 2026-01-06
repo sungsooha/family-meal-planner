@@ -14,10 +14,10 @@ import {
   X,
   ListChecks,
   ShoppingBasket,
-  SlidersHorizontal,
 } from "lucide-react";
 import { useLanguage } from "@/components/LanguageProvider";
 import { useToast } from "@/components/ToastProvider";
+import ActionMenu from "@/components/ActionMenu";
 
 type ShoppingItem = {
   name: string;
@@ -78,9 +78,6 @@ export default function ShoppingPage() {
   const [recipeIndex, setRecipeIndex] = useState(0);
   const [recipeDetail, setRecipeDetail] = useState<Recipe | null>(null);
   const [startDate, setStartDate] = useState("");
-  const [actionHidden, setActionHidden] = useState(false);
-  const [actionPinned, setActionPinned] = useState(false);
-  const pinnedScroll = useRef(0);
   const { mutate } = useSWRConfig();
   const prefetchedRecipes = useRef(new Set<string>());
   const prefetchRecipe = useCallback(
@@ -122,31 +119,6 @@ export default function ShoppingPage() {
       setShoppingList(shoppingData.shopping_items);
     }
   }, [shoppingData]);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      const current = window.scrollY;
-      const atTop = current <= 120;
-      if (atTop) {
-        setActionHidden(false);
-        if (actionPinned) setActionPinned(false);
-        return;
-      }
-      if (actionPinned) {
-        if (Math.abs(current - pinnedScroll.current) > 24) {
-          setActionPinned(false);
-          setActionHidden(true);
-        } else {
-          setActionHidden(false);
-        }
-        return;
-      }
-      setActionHidden(true);
-    };
-    handleScroll();
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [actionPinned]);
 
   const handleAdd = async (item: ShoppingItem) => {
     await postAction({ action: "add", key: item.key, name: item.name, unit: item.unit, quantity: item.quantity, lang });
@@ -285,52 +257,34 @@ export default function ShoppingPage() {
 
   return (
     <div className="space-y-6">
-      <section
-        className={`sticky top-[calc(var(--header-height)+0.5rem)] z-20 scroll-mt-[calc(var(--header-height)+2rem)] rounded-3xl border bg-white/90 p-4 text-xs backdrop-blur transition hover:shadow-lg hover:ring-2 hover:ring-emerald-200/70 ${
-          actionHidden ? "-translate-y-20 opacity-0 pointer-events-none" : "translate-y-0 opacity-100"
-        } border-white/70 shadow-sm`}
-      >
+      <section className="sticky top-[calc(var(--header-height)+0.5rem)] z-20 scroll-mt-[calc(var(--header-height)+2rem)] rounded-3xl border border-white/70 bg-white/95 p-4 text-xs shadow-sm backdrop-blur">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Shopping</p>
             <h2 className="text-lg font-semibold text-slate-900">Plan the market trip</h2>
           </div>
-          <div className="flex flex-wrap items-center gap-2 text-xs text-slate-600">
+          <ActionMenu>
             <button
-              className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-500"
+              className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 hover:text-slate-900"
               onClick={handleSaveBuyList}
             >
               Save buy list
             </button>
             <a
-              className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-500"
+              className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 hover:text-slate-900"
               href="/shopping/saved"
             >
               Saved lists
             </a>
             <button
-              className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-500"
+              className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 hover:text-slate-900"
               onClick={handlePrintChecklist}
             >
               Print list
             </button>
-          </div>
+          </ActionMenu>
         </div>
       </section>
-      {actionHidden && (
-        <button
-          className="fixed left-4 top-[calc(var(--header-height)+0.5rem+env(safe-area-inset-top))] z-30 inline-flex h-6 w-6 items-center justify-center rounded-full bg-rose-500 text-white shadow-lg backdrop-blur hover:bg-rose-600 sm:left-6"
-          onClick={() => {
-            setActionHidden(false);
-            setActionPinned(true);
-            pinnedScroll.current = window.scrollY;
-          }}
-          aria-label="Show actions"
-          title="Show actions"
-        >
-          <SlidersHorizontal className="h-3.5 w-3.5" />
-        </button>
-      )}
 
       <section className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
         <div className="rounded-3xl border border-white/70 bg-white/80 p-5 shadow-sm transition hover:shadow-lg hover:ring-2 hover:ring-emerald-200/70">

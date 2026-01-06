@@ -19,9 +19,9 @@ import {
   ListChecks,
   ShoppingBasket,
   Heart,
-  SlidersHorizontal,
 } from "lucide-react";
 import { useLanguage } from "@/components/LanguageProvider";
+import ActionMenu from "@/components/ActionMenu";
 
 type Ingredient = { name: string; quantity: number | string; unit: string };
 type Recipe = {
@@ -99,9 +99,6 @@ export default function WeeklyPlanPage() {
   const [collapsedDays, setCollapsedDays] = useState<Record<string, boolean>>({});
   const [collapsePast, setCollapsePast] = useState(true);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [actionHidden, setActionHidden] = useState(false);
-  const [actionPinned, setActionPinned] = useState(false);
-  const pinnedScroll = useRef(0);
   const pickerButtonRef = useRef<HTMLButtonElement | null>(null);
   const pickerPanelRef = useRef<HTMLDivElement | null>(null);
   const { recipes, recipesById, mutateRecipes } = useRecipes<Recipe>();
@@ -185,31 +182,6 @@ export default function WeeklyPlanPage() {
       setDrawerOpen(true);
     }
   }, [activeRecipe]);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      const current = window.scrollY;
-      const atTop = current <= 120;
-      if (atTop) {
-        setActionHidden(false);
-        if (actionPinned) setActionPinned(false);
-        return;
-      }
-      if (actionPinned) {
-        if (Math.abs(current - pinnedScroll.current) > 24) {
-          setActionPinned(false);
-          setActionHidden(true);
-        } else {
-          setActionHidden(false);
-        }
-        return;
-      }
-      setActionHidden(true);
-    };
-    handleScroll();
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [actionPinned]);
 
   useLayoutEffect(() => {
     if (!pickerOpen) return;
@@ -408,11 +380,7 @@ export default function WeeklyPlanPage() {
 
   return (
     <div className="space-y-6">
-      <section
-        className={`sticky top-[calc(var(--header-height)+0.5rem)] z-20 flex scroll-mt-[calc(var(--header-height)+2rem)] flex-wrap items-center justify-between rounded-3xl border bg-white/90 backdrop-blur transition ${
-          actionHidden ? "-translate-y-20 opacity-0 pointer-events-none" : "translate-y-0 opacity-100"
-        } gap-2 p-3 text-xs border-white/60 shadow-sm`}
-      >
+      <section className="sticky top-[calc(var(--header-height)+0.5rem)] z-20 flex scroll-mt-[calc(var(--header-height)+2rem)] flex-wrap items-center justify-between gap-3 rounded-3xl border border-white/60 bg-white/95 p-3 text-xs shadow-sm backdrop-blur">
         <div>
           <p className="text-slate-600 text-xs">Week view</p>
           <h2 className="text-lg font-semibold text-slate-900">
@@ -421,49 +389,51 @@ export default function WeeklyPlanPage() {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <button
-            className={`flex items-center rounded-full font-medium shadow-sm ${
-              collapsePast
-                ? "bg-emerald-700 text-white hover:bg-emerald-600"
-                : "border border-slate-200 bg-white text-slate-700 hover:text-slate-900"
-            } px-3 py-1.5 text-xs`}
-            onClick={() => setCollapsePast((prev) => !prev)}
-          >
-            {collapsePast ? "Collapse past" : "Expand all"}
-          </button>
-          <button
             className="flex items-center rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm hover:text-slate-900"
-            onClick={() => handleLockAll(true)}
+            onClick={() => setPickerOpen((prev) => !prev)}
+            ref={pickerButtonRef}
           >
-            <Lock className="h-4 w-4" /> Lock all
+            <CalendarDays className="h-4 w-4" />
+            {startDate || "Pick start date"}
           </button>
-          <button
-            className="flex items-center rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm hover:text-slate-900"
-            onClick={() => handleLockAll(false)}
-          >
-            <LockOpen className="h-4 w-4" /> Unlock all
-          </button>
-          <button
-            className="flex items-center rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm hover:text-slate-900"
-            onClick={handlePrintWeek}
-          >
-            Print week
-          </button>
-          <button
-            className="flex items-center rounded-full bg-emerald-700 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-emerald-600"
-            onClick={handleGenerate}
-          >
-            <Wand2 className="h-4 w-4" /> Auto-generate
-          </button>
-          <div>
+          <ActionMenu>
             <button
-              className="flex items-center rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm hover:text-slate-900"
-              onClick={() => setPickerOpen((prev) => !prev)}
-              ref={pickerButtonRef}
+              className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 hover:text-slate-900"
+              onClick={handleGenerate}
             >
-              <CalendarDays className="h-4 w-4" />
-              {startDate || "Pick start date"}
+              <Wand2 className="h-4 w-4" /> Auto-generate
             </button>
-          </div>
+            <button
+              className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 hover:text-slate-900"
+              onClick={() => handleLockAll(true)}
+            >
+              <Lock className="h-4 w-4" /> Lock all
+            </button>
+            <button
+              className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 hover:text-slate-900"
+              onClick={() => handleLockAll(false)}
+            >
+              <LockOpen className="h-4 w-4" /> Unlock all
+            </button>
+            <button
+              className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 hover:text-slate-900"
+              onClick={() => setCollapsePast((prev) => !prev)}
+            >
+              {collapsePast ? "Expand all days" : "Collapse past days"}
+            </button>
+            <button
+              className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 hover:text-slate-900"
+              onClick={handlePrintWeek}
+            >
+              Print week
+            </button>
+            <button
+              className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 hover:text-slate-900"
+              onClick={() => setShowImport(true)}
+            >
+              Add recipe JSON
+            </button>
+          </ActionMenu>
         </div>
       </section>
       {pickerOpen && (
@@ -531,21 +501,6 @@ export default function WeeklyPlanPage() {
           </div>
         </div>
       )}
-      {actionHidden && (
-        <button
-          className="fixed left-4 top-[calc(var(--header-height)+0.5rem+env(safe-area-inset-top))] z-30 inline-flex h-6 w-6 items-center justify-center rounded-full bg-rose-500 text-white shadow-lg backdrop-blur hover:bg-rose-600 sm:left-6"
-          onClick={() => {
-            setActionHidden(false);
-            setActionPinned(true);
-            pinnedScroll.current = window.scrollY;
-          }}
-          aria-label="Show actions"
-          title="Show actions"
-        >
-          <SlidersHorizontal className="h-3.5 w-3.5" />
-        </button>
-      )}
-
       {isPlanLoading ? (
         <section className="grid gap-4 lg:grid-cols-2">
           {Array.from({ length: 4 }).map((_, idx) => (
@@ -984,16 +939,12 @@ export default function WeeklyPlanPage() {
         >
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-xs uppercase tracking-wide text-slate-400">Recipe details</p>
               <h3 className="text-lg font-semibold text-slate-900">{activeRecipe.name}</h3>
               {activeMealContext ? (
                 <p className="mt-1 text-xs font-semibold text-slate-500">
                   {activeDayLabel} · {MEAL_LABELS[activeMealContext.meal] ?? activeMealContext.meal}
                 </p>
               ) : null}
-              <p className="text-sm text-slate-500">
-                {(activeRecipe.meal_types ?? []).join(", ") || "Flexible"} · {activeRecipe.servings ?? "?"} servings
-              </p>
             </div>
             <button
               onClick={() => {
@@ -1006,9 +957,7 @@ export default function WeeklyPlanPage() {
             </button>
           </div>
           {activeDay ? (
-            <div className="mt-4 rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Day menu</p>
-              <div className="mt-2 grid gap-2 sm:grid-cols-3">
+            <div className="mt-3 flex flex-wrap gap-2">
                 {mealTypeOptions.map((meal) => {
                   const entry = activeDay.meals[meal];
                   const recipeMeta = entry?.recipe_id ? recipesById.get(entry.recipe_id) : null;
@@ -1017,7 +966,7 @@ export default function WeeklyPlanPage() {
                   return (
                     <button
                       key={meal}
-                      className={`rounded-xl border px-3 py-2 text-left text-[11px] transition ${
+                      className={`rounded-full border px-3 py-1 text-left text-[11px] transition ${
                         isActive
                           ? "border-rose-200 bg-rose-50 text-rose-700"
                           : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
@@ -1039,11 +988,9 @@ export default function WeeklyPlanPage() {
                       }}
                     >
                       <span className="block font-semibold">{MEAL_LABELS[meal]}</span>
-                      <span className="mt-0.5 block text-slate-500">{label ?? "Add recipe"}</span>
                     </button>
                   );
                 })}
-              </div>
             </div>
           ) : null}
           {youtubeId && (

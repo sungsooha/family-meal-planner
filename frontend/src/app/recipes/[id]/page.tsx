@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import useSWR from "swr";
 import { useRecipes } from "@/lib/useRecipes";
-import { ArrowLeft, ListChecks, ShoppingBasket, SlidersHorizontal } from "lucide-react";
+import { ArrowLeft, ListChecks, ShoppingBasket } from "lucide-react";
 import { useLanguage } from "@/components/LanguageProvider";
 import { useToast } from "@/components/ToastProvider";
 
@@ -37,34 +37,6 @@ export default function RecipeDetailPage() {
   const { showToast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState<Recipe | null>(null);
-  const [actionHidden, setActionHidden] = useState(false);
-  const [actionPinned, setActionPinned] = useState(false);
-  const pinnedScroll = useRef(0);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      const current = window.scrollY;
-      const atTop = current <= 120;
-      if (atTop) {
-        setActionHidden(false);
-        if (actionPinned) setActionPinned(false);
-        return;
-      }
-      if (actionPinned) {
-        if (Math.abs(current - pinnedScroll.current) > 24) {
-          setActionPinned(false);
-          setActionHidden(true);
-        } else {
-          setActionHidden(false);
-        }
-        return;
-      }
-      setActionHidden(true);
-    };
-    handleScroll();
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [actionPinned]);
 
   useEffect(() => {
     if (recipe) {
@@ -143,47 +115,22 @@ export default function RecipeDetailPage() {
 
   return (
     <div className="space-y-6">
-      <section
-        className={`sticky top-[calc(var(--header-height)+0.5rem)] z-20 scroll-mt-[calc(var(--header-height)+2rem)] rounded-3xl border bg-white/90 p-4 text-xs backdrop-blur transition hover:shadow-lg hover:ring-2 hover:ring-emerald-200/70 ${
-          actionHidden ? "-translate-y-20 opacity-0 pointer-events-none" : "translate-y-0 opacity-100"
-        } border-white/70 shadow-sm`}
-      >
-        <Link href="/recipes" className="flex items-center gap-2 text-sm text-slate-600">
-          <ArrowLeft className="h-4 w-4" /> Back to recipes
+      <section className="sticky top-[calc(var(--header-height)+0.5rem)] z-20 scroll-mt-[calc(var(--header-height)+2rem)] rounded-3xl border border-white/70 bg-white/95 p-4 text-xs shadow-sm backdrop-blur">
+        <Link href="/recipes" className="inline-flex items-center gap-1 text-[11px] text-slate-500">
+          <ArrowLeft className="h-3.5 w-3.5" /> Back to recipes
         </Link>
-        <div className="mt-4 flex flex-wrap items-start justify-between gap-4">
+        <div className="mt-2 flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="text-xs uppercase tracking-wide text-slate-400">Recipe detail</p>
             <h2 className="text-lg font-semibold text-slate-900">{recipe.name}</h2>
-            <p className="text-sm text-slate-600">
-              {(recipe.meal_types ?? []).join(", ") || "Flexible"} · {recipe.servings ?? "?"} servings
-            </p>
           </div>
-          <div className="flex items-center gap-2">
-            <p className="text-sm text-slate-600">Language: {language === "en" ? "English" : "Original"}</p>
-            <button
-              className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs text-slate-500"
-              onClick={() => setIsEditing(true)}
-            >
-              Edit
-            </button>
-          </div>
+          <button
+            className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs text-slate-500 hover:text-slate-900"
+            onClick={() => setIsEditing(true)}
+          >
+            Edit
+          </button>
         </div>
       </section>
-      {actionHidden && (
-        <button
-          className="fixed left-4 top-[calc(var(--header-height)+0.5rem+env(safe-area-inset-top))] z-30 inline-flex h-6 w-6 items-center justify-center rounded-full bg-rose-500 text-white shadow-lg backdrop-blur hover:bg-rose-600 sm:left-6"
-          onClick={() => {
-            setActionHidden(false);
-            setActionPinned(true);
-            pinnedScroll.current = window.scrollY;
-          }}
-          aria-label="Show actions"
-          title="Show actions"
-        >
-          <SlidersHorizontal className="h-3.5 w-3.5" />
-        </button>
-      )}
 
       {youtubeId && (
         <section className="overflow-hidden rounded-3xl border border-white/70 bg-white/80 shadow-sm">
@@ -198,6 +145,21 @@ export default function RecipeDetailPage() {
       )}
 
       <section className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
+        <div className="rounded-2xl border border-white/70 bg-white/80 px-4 py-3 text-xs text-slate-600 shadow-sm lg:col-span-2">
+          <span className="font-medium text-slate-700">Meal types:</span>
+          <span className="ml-2 inline-flex flex-wrap gap-2">
+            {(recipe.meal_types ?? []).length
+              ? (recipe.meal_types ?? []).map((type) => (
+                  <span
+                    key={type}
+                    className="rounded-full border border-slate-200 bg-white px-2.5 py-0.5 text-[11px] text-slate-500"
+                  >
+                    {type}
+                  </span>
+                ))
+              : "Flexible"}
+          </span>
+        </div>
         <div className="rounded-3xl border border-white/70 bg-white/80 p-6 shadow-sm transition hover:shadow-lg hover:ring-2 hover:ring-emerald-200/70">
           <div className="flex items-center gap-2 border-b border-dashed border-slate-200 pb-2">
             <ListChecks className="h-4 w-4 text-slate-400" />
@@ -215,6 +177,9 @@ export default function RecipeDetailPage() {
           <div className="flex items-center gap-2 border-b border-dashed border-slate-200 pb-2">
             <ShoppingBasket className="h-4 w-4 text-slate-400" />
             <h3 className="text-sm font-semibold text-slate-900">Ingredients</h3>
+            <span className="text-xs text-slate-500">
+              {recipe.servings ?? "?"} servings
+            </span>
           </div>
           <ul className="mt-3 space-y-2 text-sm text-slate-600">
             {(ingredients ?? []).map((item, idx) => (

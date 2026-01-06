@@ -7,7 +7,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSWRConfig } from "swr";
 import { useRecipes } from "@/lib/useRecipes";
 import { BLUR_DATA_URL } from "@/lib/image";
-import { Filter, Upload, X, Shuffle, SlidersHorizontal } from "lucide-react";
+import { Filter, Upload, X, Shuffle } from "lucide-react";
+import ActionMenu from "@/components/ActionMenu";
 
 type Ingredient = { name: string; quantity: number | string; unit: string };
 type Recipe = {
@@ -47,9 +48,6 @@ export default function RecipesPage() {
   const [showImport, setShowImport] = useState(false);
   const [recipeIdInput, setRecipeIdInput] = useState("");
   const [sourceUrlInput, setSourceUrlInput] = useState("");
-  const [actionHidden, setActionHidden] = useState(false);
-  const [actionPinned, setActionPinned] = useState(false);
-  const pinnedScroll = useRef(0);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -57,31 +55,6 @@ export default function RecipesPage() {
       setShowImport(true);
     }
   }, []);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      const current = window.scrollY;
-      const atTop = current <= 120;
-      if (atTop) {
-        setActionHidden(false);
-        if (actionPinned) setActionPinned(false);
-        return;
-      }
-      if (actionPinned) {
-        if (Math.abs(current - pinnedScroll.current) > 24) {
-          setActionPinned(false);
-          setActionHidden(true);
-        } else {
-          setActionHidden(false);
-        }
-        return;
-      }
-      setActionHidden(true);
-    };
-    handleScroll();
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [actionPinned]);
 
   const visibleRecipes = useMemo(() => {
     if (!filters.length) return recipes;
@@ -148,54 +121,53 @@ export default function RecipesPage() {
 
   return (
     <div className="space-y-6">
-      <section
-        className={`sticky top-[calc(var(--header-height)+0.5rem)] z-20 scroll-mt-[calc(var(--header-height)+2rem)] rounded-3xl border bg-white/90 p-4 text-xs backdrop-blur transition hover:shadow-lg hover:ring-2 hover:ring-emerald-200/70 ${
-          actionHidden ? "-translate-y-20 opacity-0 pointer-events-none" : "translate-y-0 opacity-100"
-        } border-white/70 shadow-sm`}
-      >
+      <section className="sticky top-[calc(var(--header-height)+0.5rem)] z-20 scroll-mt-[calc(var(--header-height)+2rem)] rounded-3xl border border-white/70 bg-white/95 p-4 text-xs shadow-sm backdrop-blur">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Recipe Library</p>
             <h2 className="text-lg font-semibold text-slate-900">Browse every saved recipe</h2>
+            <p className="mt-1 text-xs text-slate-500">
+              {filters.length ? `Filters: ${filters.join(", ")}` : "Filters: All meals"}
+            </p>
           </div>
-          <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs text-slate-600">
+          <ActionMenu>
             <button
-              className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-500"
+              className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 hover:text-slate-900"
               onClick={() => setShowImport(true)}
             >
-              Import JSON
+              <Upload className="h-4 w-4" /> Import JSON
             </button>
-            <Filter className="h-4 w-4" />
-            <div className="flex flex-wrap items-center gap-2">
-              {MEAL_TYPES.map((meal) => (
-                <button
-                  key={meal}
-                  className={`rounded-full px-3 py-1 text-xs ${
-                    filters.includes(meal) ? "bg-emerald-700 text-white" : "border border-slate-200 text-slate-500"
-                  }`}
-                  onClick={() => toggleFilter(meal)}
-                >
-                  {meal}
-                </button>
-              ))}
+            <div className="rounded-xl border border-slate-200 bg-white px-3 py-2">
+              <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                <Filter className="h-3.5 w-3.5" /> Filters
+              </div>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {MEAL_TYPES.map((meal) => (
+                  <button
+                    key={meal}
+                    className={`rounded-full px-3 py-1 text-xs ${
+                      filters.includes(meal)
+                        ? "bg-emerald-700 text-white"
+                        : "border border-slate-200 text-slate-500"
+                    }`}
+                    onClick={() => toggleFilter(meal)}
+                  >
+                    {meal}
+                  </button>
+                ))}
+                {filters.length > 0 && (
+                  <button
+                    className="rounded-full border border-slate-200 px-3 py-1 text-xs text-slate-500"
+                    onClick={() => setFilters([])}
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
             </div>
-          </div>
+          </ActionMenu>
         </div>
       </section>
-      {actionHidden && (
-        <button
-          className="fixed left-4 top-[calc(var(--header-height)+0.5rem+env(safe-area-inset-top))] z-30 inline-flex h-6 w-6 items-center justify-center rounded-full bg-rose-500 text-white shadow-lg backdrop-blur hover:bg-rose-600 sm:left-6"
-          onClick={() => {
-            setActionHidden(false);
-            setActionPinned(true);
-            pinnedScroll.current = window.scrollY;
-          }}
-          aria-label="Show actions"
-          title="Show actions"
-        >
-          <SlidersHorizontal className="h-3.5 w-3.5" />
-        </button>
-      )}
 
       <section className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
         {isLoading && recipes.length === 0
