@@ -44,6 +44,13 @@ type Meal = {
 } | null;
 type WeeklyPlan = { start_date: string; days: Array<{ date: string; meals: Record<string, Meal> }> };
 
+const formatLocalDate = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
 const MEAL_LABELS: Record<string, string> = {
   breakfast: "Breakfast",
   lunch: "Lunch",
@@ -108,6 +115,11 @@ export default function WeeklyPlanPage() {
       const storedDate = new Date(`${stored}T00:00:00`);
       setCalendarMonth(new Date(storedDate.getFullYear(), storedDate.getMonth(), 1));
       setStartDate(stored);
+    } else {
+      const today = formatLocalDate(new Date());
+      setCalendarMonth(new Date());
+      setStartDate(today);
+      window.localStorage.setItem("mealplanner-start-date", today);
     }
   }, []);
 
@@ -130,7 +142,7 @@ export default function WeeklyPlanPage() {
     if (!plan) return;
     setCollapsedDays((prev) => {
       const next = { ...prev };
-      const today = new Date().toISOString().split("T")[0];
+      const today = formatLocalDate(new Date());
       plan.days.forEach((day) => {
         if (next[day.date] === undefined) {
           next[day.date] = collapsePast ? day.date < today : false;
@@ -342,7 +354,7 @@ export default function WeeklyPlanPage() {
     }
     for (let day = 1; day <= daysInMonth; day += 1) {
       const date = new Date(year, monthIndex, day);
-      const iso = date.toISOString().split("T")[0];
+      const iso = formatLocalDate(date);
       cells.push({ date: iso, label: day, inMonth: true });
     }
     return cells;
@@ -511,7 +523,7 @@ export default function WeeklyPlanPage() {
             const missing = Object.values(day.meals).filter((meal) => !meal).length;
             const plannedCount = Object.values(day.meals).filter((meal) => meal).length;
             const completedCount = Object.values(day.meals).filter((meal) => meal?.completed).length;
-            const isToday = day.date === new Date().toISOString().split("T")[0];
+            const isToday = day.date === formatLocalDate(new Date());
             const weekday = new Date(`${day.date}T00:00:00`).getDay();
             const isWeekend = weekday === 0 || weekday === 6;
             return (

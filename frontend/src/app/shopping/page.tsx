@@ -46,6 +46,13 @@ type ShoppingPayload = {
   lang: string;
 };
 
+const formatLocalDate = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
 async function postAction(payload: Record<string, unknown>) {
   const response = await fetch("/api/shopping", {
     method: "POST",
@@ -83,7 +90,13 @@ export default function ShoppingPage() {
 
   useEffect(() => {
     const stored = window.localStorage.getItem("mealplanner-start-date");
-    if (stored) setStartDate(stored);
+    if (stored) {
+      setStartDate(stored);
+    } else {
+      const today = formatLocalDate(new Date());
+      setStartDate(today);
+      window.localStorage.setItem("mealplanner-start-date", today);
+    }
   }, []);
 
   useEffect(() => {
@@ -177,7 +190,7 @@ export default function ShoppingPage() {
     const start = new Date(`${startDate}T00:00:00`);
     const end = new Date(start);
     end.setDate(start.getDate() + 6);
-    const weekEnd = end.toISOString().split("T")[0];
+    const weekEnd = formatLocalDate(end);
     const payload = {
       id: crypto.randomUUID(),
       week_start: startDate,
