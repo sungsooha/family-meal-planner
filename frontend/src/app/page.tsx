@@ -123,6 +123,9 @@ export default function WeeklyPlanPage() {
   }, [startDate]);
 
   const { data: planData, mutate: mutatePlan } = useSWR<WeeklyPlan>(planKey);
+  const { data: activeRecipeData } = useSWR<Recipe | null>(
+    activeRecipeId ? `/api/recipes/${activeRecipeId}` : null,
+  );
 
   useEffect(() => {
     const stored = window.localStorage.getItem("mealplanner-start-date");
@@ -173,11 +176,8 @@ export default function WeeklyPlanPage() {
       setActiveRecipe(null);
       return;
     }
-    fetch(`/api/recipes/${activeRecipeId}`)
-      .then((res) => res.json())
-      .then((data) => setActiveRecipe(data as Recipe))
-      .catch(() => setActiveRecipe(null));
-  }, [activeRecipeId]);
+    setActiveRecipe(activeRecipeData ?? null);
+  }, [activeRecipeId, activeRecipeData]);
 
   useEffect(() => {
     if (activeRecipe) {

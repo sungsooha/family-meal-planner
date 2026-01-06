@@ -11,7 +11,7 @@
 
 ## API & Network
 - [x] Add cache headers to API responses (`s-maxage` + `stale-while-revalidate`) to reduce cold-start latency.
-- Consider lightweight response shape for list vs detail endpoints.
+- [x] Consider lightweight response shape for list vs detail endpoints.
 
 ## UX Perceived Performance
 - Skeleton loaders for first-time loads (plan, recipes, shopping).

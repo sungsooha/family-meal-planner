@@ -2,7 +2,9 @@ import { NextResponse } from "next/server";
 import { addRecipe, getRecipeSourceById, getRecipes } from "@/lib/data";
 import { jsonWithCache } from "@/lib/cache";
 
-export async function GET() {
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const view = searchParams.get("view");
   const recipes = await getRecipes();
   const enriched = await Promise.all(
     recipes.map(async (recipe) => {
@@ -13,6 +15,20 @@ export async function GET() {
       };
     }),
   );
+  if (view === "summary") {
+    const summary = enriched.map((recipe) => ({
+      recipe_id: recipe.recipe_id,
+      name: recipe.name,
+      meal_types: recipe.meal_types ?? [],
+      meal_type: recipe.meal_type ?? null,
+      servings: recipe.servings ?? null,
+      source_url: recipe.source_url ?? null,
+      thumbnail_url: recipe.thumbnail_url ?? null,
+      notes: recipe.notes ?? null,
+      family_feedback_score: recipe.family_feedback_score ?? null,
+    }));
+    return jsonWithCache(summary);
+  }
   return jsonWithCache(enriched);
 }
 
