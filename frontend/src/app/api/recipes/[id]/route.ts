@@ -8,6 +8,7 @@ import {
   updateRecipe,
 } from "@/lib/data";
 import { computeShoppingList, syncShoppingState } from "@/lib/shopping";
+import { jsonWithCache } from "@/lib/cache";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -31,7 +32,7 @@ export async function GET(_: Request, { params }: Params) {
       thumbnailUrl = thumbnailUrl ?? null;
     }
   }
-  return NextResponse.json({
+  return jsonWithCache({
     ...recipe,
     source_url: recipe.source_url ?? source?.source_url ?? null,
     thumbnail_url: thumbnailUrl,

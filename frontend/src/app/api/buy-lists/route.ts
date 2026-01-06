@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { BuyList, saveBuyList, listBuyLists } from "@/lib/data";
+import { jsonWithCache } from "@/lib/cache";
 
 export async function GET() {
   const lists = await listBuyLists();
-  return NextResponse.json({ lists });
+  return jsonWithCache({ lists });
 }
 
 export async function POST(request: Request) {

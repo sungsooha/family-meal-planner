@@ -10,7 +10,7 @@
 - [x] Reuse browser cache by keeping thumbnail URLs stable (avoid query churn).
 
 ## API & Network
-- Add cache headers to API responses (`s-maxage` + `stale-while-revalidate`) to reduce cold-start latency.
+- [x] Add cache headers to API responses (`s-maxage` + `stale-while-revalidate`) to reduce cold-start latency.
 - Consider lightweight response shape for list vs detail endpoints.
 
 ## UX Perceived Performance

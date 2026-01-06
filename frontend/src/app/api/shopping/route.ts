@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getWeeklyPlanForDate, getShoppingState, saveShoppingState } from "@/lib/data";
 import { computeShoppingList, itemKey, syncShoppingState, type ShoppingItem } from "@/lib/shopping";
+import { jsonWithCache } from "@/lib/cache";
 
 type ShoppingItemResponse = ShoppingItem & {
   default_quantity: number | string;
@@ -54,7 +55,7 @@ export async function GET(request: Request) {
 
   const weeklyList = weeklyItems.filter((item) => !(item.key in state));
 
-  return NextResponse.json({ weekly_list: weeklyList, shopping_items: shoppingItems, lang });
+  return jsonWithCache({ weekly_list: weeklyList, shopping_items: shoppingItems, lang });
 }
 
 export async function POST(request: Request) {

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { addRecipe, getRecipeSourceById, getRecipes } from "@/lib/data";
+import { jsonWithCache } from "@/lib/cache";
 
 export async function GET() {
   const recipes = await getRecipes();
@@ -12,7 +13,7 @@ export async function GET() {
       };
     }),
   );
-  return NextResponse.json(enriched);
+  return jsonWithCache(enriched);
 }
 
 export async function POST(request: Request) {

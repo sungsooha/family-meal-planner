@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { deleteBuyList, getBuyListById, saveBuyList } from "@/lib/data";
+import { jsonWithCache } from "@/lib/cache";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -9,7 +10,7 @@ export async function GET(_: Request, { params }: Params) {
   if (!list) {
     return NextResponse.json({ error: "Not found." }, { status: 404 });
   }
-  return NextResponse.json(list);
+  return jsonWithCache(list);
 }
 
 export async function PUT(request: Request, { params }: Params) {
