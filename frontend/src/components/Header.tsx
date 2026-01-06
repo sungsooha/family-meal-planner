@@ -1,12 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useLanguage } from "./LanguageProvider";
 import { getSupabaseBrowser } from "@/lib/supabase";
-import { BLUR_DATA_URL } from "@/lib/image";
 
 export default function Header() {
   const { language, setLanguage } = useLanguage();
@@ -48,20 +46,16 @@ export default function Header() {
         scrolled ? "border-white/30 shadow-md" : "border-white/60 shadow-none"
       }`}
     >
-      <div className="mx-auto flex w-full max-w-6xl flex-col items-start justify-between gap-2 px-6 pb-2 pt-2 md:flex-row md:items-center">
+      <div className="mx-auto flex w-full max-w-6xl flex-col items-start gap-2 px-6 pb-2 pt-2 text-xs font-medium text-slate-600 md:flex-row md:items-center md:justify-between">
         <div className="flex items-center">
-          <Image
-            src="/ha_family_logo.png"
-            alt="Ha family illustration"
-            width={144}
-            height={144}
-            className="h-24 w-auto sm:h-28 md:h-32 lg:h-36"
-            placeholder="blur"
-            blurDataURL={BLUR_DATA_URL}
-            priority
+          <img
+            src="/together_at_the_table_full.png"
+            alt="Together at the table illustration"
+            className="h-20 w-auto sm:h-24 md:h-28"
+            loading="eager"
           />
         </div>
-      <div className="flex w-full flex-wrap items-center gap-2 text-xs font-medium text-slate-600 md:w-auto">
+        <div className="flex w-full flex-wrap items-center gap-2 md:w-auto">
         <select
           className="rounded-full border border-slate-200 bg-white/80 px-2.5 py-1 text-[11px] shadow-sm"
           value={language}
@@ -114,7 +108,7 @@ export default function Header() {
         >
           Sign out
         </button>
-      </div>
+        </div>
       </div>
     </header>
   );

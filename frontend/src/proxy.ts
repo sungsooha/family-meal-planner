@@ -16,7 +16,10 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith("/api/auth") ||
     pathname.startsWith("/_next") ||
     pathname.startsWith("/favicon.ico") ||
-    pathname.startsWith("/ha_family_logo.png")
+    pathname.startsWith("/ha_family_logo.png") ||
+    pathname.startsWith("/icon.png") ||
+    pathname.startsWith("/together_at_the_table_favicon.png") ||
+    pathname.startsWith("/together_at_the_table_full.png")
   ) {
     return NextResponse.next();
   }
@@ -61,5 +64,7 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|ha_family_logo.png).*)"],
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|ha_family_logo.png|icon.png|together_at_the_table_favicon.png|together_at_the_table_full.png).*)",
+  ],
 };

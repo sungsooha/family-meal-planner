@@ -8,6 +8,10 @@ import SWRProvider from "@/components/SWRProvider";
 export const metadata: Metadata = {
   title: "Family Meal Planner",
   description: "Weekly recipes, shopping list, and meal planning.",
+  icons: {
+    icon: [{ url: "/icon.png?v=2", type: "image/png" }],
+    shortcut: "/icon.png?v=2",
+  },
 };
 
 export default function RootLayout({
