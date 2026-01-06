@@ -977,6 +977,11 @@ export default function WeeklyPlanPage() {
                           ? "border-rose-200 bg-rose-50 text-rose-700"
                           : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
                       }`}
+                      onMouseEnter={() => {
+                        if (entry?.recipe_id) {
+                          prefetchRecipe(entry.recipe_id);
+                        }
+                      }}
                       onClick={() => {
                         if (entry?.recipe_id) {
                           setActiveRecipeId(entry.recipe_id);
