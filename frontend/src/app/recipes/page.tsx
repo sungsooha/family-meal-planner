@@ -28,7 +28,7 @@ type Recipe = {
 const MEAL_TYPES = ["breakfast", "lunch", "dinner", "snack"] as const;
 
 export default function RecipesPage() {
-  const { recipes, mutateRecipes } = useRecipes<Recipe>();
+  const { recipes, mutateRecipes, isLoading } = useRecipes<Recipe>();
   const { mutate } = useSWRConfig();
   const prefetchedRecipes = useRef(new Set<string>());
   const prefetchRecipe = useCallback((recipeId: string) => {
@@ -198,43 +198,59 @@ export default function RecipesPage() {
       )}
 
       <section className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-        {visibleRecipes.map((recipe) => (
-          <Link
-            key={recipe.recipe_id}
-            href={`/recipes/${recipe.recipe_id}`}
-            className="rounded-2xl border border-white/70 bg-white/80 p-4 text-left shadow-sm transition hover:-translate-y-1 hover:shadow-lg hover:ring-2 hover:ring-emerald-200/70"
-            onMouseEnter={() => {
-              prefetchRecipe(recipe.recipe_id);
-            }}
-          >
-            <div className="flex items-start gap-3 border-b border-dashed border-slate-200 pb-2">
-              {recipe.thumbnail_url ? (
-                <Image
-                  src={recipe.thumbnail_url}
-                  alt={recipe.name}
-                  width={64}
-                  height={64}
-                  className="h-16 w-16 rounded-xl object-cover"
-                  sizes="64px"
-                  placeholder="blur"
-                  blurDataURL={BLUR_DATA_URL}
-                />
-              ) : (
-                <div className="h-16 w-16 rounded-xl bg-slate-100" />
-              )}
-              <div className="flex-1">
-                <p className="text-xs uppercase tracking-wide text-slate-400">
-                  {(recipe.meal_types ?? []).join(", ") || "Flexible"}
-                </p>
-                <h3 className="mt-2 text-sm font-semibold text-slate-900">{recipe.name}</h3>
-            <p className="mt-1 text-xs text-slate-600">Serves {recipe.servings ?? "?"}</p>
-                {typeof recipe.family_feedback_score === "number" && (
-                  <p className="mt-1 text-xs text-amber-600">Family score: {recipe.family_feedback_score}/5</p>
-                )}
+        {isLoading && recipes.length === 0
+          ? Array.from({ length: 6 }).map((_, idx) => (
+              <div
+                key={`skeleton-${idx}`}
+                className="rounded-2xl border border-white/70 bg-white/70 p-4 shadow-sm"
+              >
+                <div className="flex items-start gap-3 border-b border-dashed border-slate-200 pb-2">
+                  <div className="h-16 w-16 rounded-xl bg-slate-100" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-3 w-20 rounded-full bg-slate-100" />
+                    <div className="h-4 w-40 rounded-full bg-slate-100" />
+                    <div className="h-3 w-16 rounded-full bg-slate-100" />
+                  </div>
+                </div>
               </div>
-            </div>
-          </Link>
-        ))}
+            ))
+          : visibleRecipes.map((recipe) => (
+              <Link
+                key={recipe.recipe_id}
+                href={`/recipes/${recipe.recipe_id}`}
+                className="rounded-2xl border border-white/70 bg-white/80 p-4 text-left shadow-sm transition hover:-translate-y-1 hover:shadow-lg hover:ring-2 hover:ring-emerald-200/70"
+                onMouseEnter={() => {
+                  prefetchRecipe(recipe.recipe_id);
+                }}
+              >
+                <div className="flex items-start gap-3 border-b border-dashed border-slate-200 pb-2">
+                  {recipe.thumbnail_url ? (
+                    <Image
+                      src={recipe.thumbnail_url}
+                      alt={recipe.name}
+                      width={64}
+                      height={64}
+                      className="h-16 w-16 rounded-xl object-cover"
+                      sizes="64px"
+                      placeholder="blur"
+                      blurDataURL={BLUR_DATA_URL}
+                    />
+                  ) : (
+                    <div className="h-16 w-16 rounded-xl bg-slate-100" />
+                  )}
+                  <div className="flex-1">
+                    <p className="text-xs uppercase tracking-wide text-slate-400">
+                      {(recipe.meal_types ?? []).join(", ") || "Flexible"}
+                    </p>
+                    <h3 className="mt-2 text-sm font-semibold text-slate-900">{recipe.name}</h3>
+                    <p className="mt-1 text-xs text-slate-600">Serves {recipe.servings ?? "?"}</p>
+                    {typeof recipe.family_feedback_score === "number" && (
+                      <p className="mt-1 text-xs text-amber-600">Family score: {recipe.family_feedback_score}/5</p>
+                    )}
+                  </div>
+                </div>
+              </Link>
+            ))}
       </section>
 
       {showImport && (

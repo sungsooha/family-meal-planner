@@ -103,6 +103,7 @@ export default function ShoppingPage() {
   }, [lang, startDate]);
 
   const { data: shoppingData, mutate: mutateShopping } = useSWR<ShoppingPayload>(shoppingKey);
+  const isShoppingLoading = !shoppingData;
 
   useEffect(() => {
     const stored = window.localStorage.getItem("mealplanner-start-date");
@@ -341,36 +342,49 @@ export default function ShoppingPage() {
             <ShoppingCart className="h-4 w-4 text-slate-400" />
           </div>
           <div className="mt-4 space-y-2">
-            {weeklyList.map((item) => (
-              <div
-                key={item.key}
-                className="flex items-center justify-between rounded-2xl border border-slate-100 bg-slate-50 px-3 py-2 transition hover:-translate-y-0.5 hover:border-slate-200 hover:bg-white hover:shadow-md hover:ring-1 hover:ring-emerald-200/70"
-              >
-                <div>
-                  <p className="text-sm font-medium text-slate-900">{item.name}</p>
-                  <p className="text-xs text-slate-500">
-                    {item.quantity} {item.unit} · {item.recipes_count} recipes
-                  </p>
-                </div>
-                <div className="flex items-center gap-1">
-                  {item.recipe_ids.length > 0 && (
-                    <button
-                      className="rounded-full border border-slate-200 bg-white px-2 py-1 text-xs text-slate-500"
-                      onClick={() => openRecipes(item.recipe_ids)}
-                      title="View recipes"
-                    >
-                      <BookOpen className="h-3 w-3" />
-                    </button>
-                  )}
-                  <button
-                    className="rounded-full border border-slate-200 bg-white px-2 py-1 text-xs text-slate-500"
-                    onClick={() => handleAdd(item)}
+            {isShoppingLoading
+              ? Array.from({ length: 4 }).map((_, idx) => (
+                  <div
+                    key={`weekly-skeleton-${idx}`}
+                    className="flex items-center justify-between rounded-2xl border border-slate-100 bg-slate-50 px-3 py-2"
                   >
-                    <Plus className="h-3 w-3" />
-                  </button>
-                </div>
-              </div>
-            ))}
+                    <div className="space-y-2">
+                      <div className="h-3 w-24 rounded-full bg-slate-100" />
+                      <div className="h-3 w-32 rounded-full bg-slate-100" />
+                    </div>
+                    <div className="h-6 w-14 rounded-full bg-slate-100" />
+                  </div>
+                ))
+              : weeklyList.map((item) => (
+                  <div
+                    key={item.key}
+                    className="flex items-center justify-between rounded-2xl border border-slate-100 bg-slate-50 px-3 py-2 transition hover:-translate-y-0.5 hover:border-slate-200 hover:bg-white hover:shadow-md hover:ring-1 hover:ring-emerald-200/70"
+                  >
+                    <div>
+                      <p className="text-sm font-medium text-slate-900">{item.name}</p>
+                      <p className="text-xs text-slate-500">
+                        {item.quantity} {item.unit} · {item.recipes_count} recipes
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      {item.recipe_ids.length > 0 && (
+                        <button
+                          className="rounded-full border border-slate-200 bg-white px-2 py-1 text-xs text-slate-500"
+                          onClick={() => openRecipes(item.recipe_ids)}
+                          title="View recipes"
+                        >
+                          <BookOpen className="h-3 w-3" />
+                        </button>
+                      )}
+                      <button
+                        className="rounded-full border border-slate-200 bg-white px-2 py-1 text-xs text-slate-500"
+                        onClick={() => handleAdd(item)}
+                      >
+                        <Plus className="h-3 w-3" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
           </div>
         </div>
 
@@ -411,46 +425,62 @@ export default function ShoppingPage() {
             </div>
           </div>
           <div className="mt-4 space-y-2">
-            {shoppingList.map((item) => (
-              <div key={item.key} className="rounded-2xl border border-slate-100 bg-white px-2 py-2 transition hover:-translate-y-0.5 hover:border-slate-200 hover:bg-slate-50 hover:shadow-md hover:ring-1 hover:ring-emerald-200/70">
-                <div className="flex items-center justify-between gap-2">
-                  <div>
-                    <p className="text-xs font-semibold text-slate-900">{item.name}</p>
-                    <p className="text-[11px] text-slate-500">
-                      Default: {item.default_quantity ?? "-"} {item.default_unit ?? item.unit}
-                    </p>
-                    <p className="text-[11px] text-slate-400">
-                      Manual: {item.quantity} {item.unit} · {item.recipes_count} recipes
-                    </p>
+            {isShoppingLoading
+              ? Array.from({ length: 4 }).map((_, idx) => (
+                  <div
+                    key={`shop-skeleton-${idx}`}
+                    className="rounded-2xl border border-slate-100 bg-white px-2 py-2"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="space-y-2">
+                        <div className="h-3 w-28 rounded-full bg-slate-100" />
+                        <div className="h-3 w-36 rounded-full bg-slate-100" />
+                        <div className="h-3 w-24 rounded-full bg-slate-100" />
+                      </div>
+                      <div className="h-6 w-16 rounded-full bg-slate-100" />
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1">
-                    {item.recipe_ids.length > 0 && (
-                      <button
-                        className="rounded-full border border-slate-200 bg-white px-2 py-1 text-xs text-slate-500"
-                        onClick={() => openRecipes(item.recipe_ids)}
-                        title="View recipes"
-                      >
-                        <BookOpen className="h-3 w-3" />
-                      </button>
-                    )}
-                    <button
-                      className="rounded-full border border-slate-200 bg-white px-2 py-1 text-xs text-slate-500"
-                      onClick={() => openEdit(item)}
-                      title="Edit quantity"
-                    >
-                      <Pencil className="h-3 w-3" />
-                    </button>
-                    <button
-                      className="rounded-full border border-slate-200 bg-white px-2 py-1 text-xs text-slate-500"
-                      onClick={() => handleRemove(item)}
-                      title="Remove"
-                    >
-                      <Minus className="h-3 w-3" />
-                    </button>
+                ))
+              : shoppingList.map((item) => (
+                  <div key={item.key} className="rounded-2xl border border-slate-100 bg-white px-2 py-2 transition hover:-translate-y-0.5 hover:border-slate-200 hover:bg-slate-50 hover:shadow-md hover:ring-1 hover:ring-emerald-200/70">
+                    <div className="flex items-center justify-between gap-2">
+                      <div>
+                        <p className="text-xs font-semibold text-slate-900">{item.name}</p>
+                        <p className="text-[11px] text-slate-500">
+                          Default: {item.default_quantity ?? "-"} {item.default_unit ?? item.unit}
+                        </p>
+                        <p className="text-[11px] text-slate-400">
+                          Manual: {item.quantity} {item.unit} · {item.recipes_count} recipes
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        {item.recipe_ids.length > 0 && (
+                          <button
+                            className="rounded-full border border-slate-200 bg-white px-2 py-1 text-xs text-slate-500"
+                            onClick={() => openRecipes(item.recipe_ids)}
+                            title="View recipes"
+                          >
+                            <BookOpen className="h-3 w-3" />
+                          </button>
+                        )}
+                        <button
+                          className="rounded-full border border-slate-200 bg-white px-2 py-1 text-xs text-slate-500"
+                          onClick={() => openEdit(item)}
+                          title="Edit quantity"
+                        >
+                          <Pencil className="h-3 w-3" />
+                        </button>
+                        <button
+                          className="rounded-full border border-slate-200 bg-white px-2 py-1 text-xs text-slate-500"
+                          onClick={() => handleRemove(item)}
+                          title="Remove"
+                        >
+                          <Minus className="h-3 w-3" />
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
-            ))}
+                ))}
           </div>
         </div>
       </section>
