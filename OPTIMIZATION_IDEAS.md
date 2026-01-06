@@ -1,8 +1,8 @@
 # Optimization Ideas
 
 ## Caching & Data Reuse
-- Seed recipe detail cache from the recipe list so `/recipes/[id]` can render instantly. (implemented)
-- Provide a shared `useRecipes()` hook that exposes a cached list + `recipesById` map. (implemented)
+- [x] Seed recipe detail cache from the recipe list so `/recipes/[id]` can render instantly.
+- [x] Provide a shared `useRecipes()` hook that exposes a cached list + `recipesById` map.
 - Warm cache on hover for recipe cards to make detail navigation instantaneous.
 
 ## Image & Asset Loading
