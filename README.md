@@ -67,6 +67,8 @@ ALLOWED_EMAILS=you@example.com,partner@example.com
 
 3. Start the app and sign in from `/login`.
 
+Detailed login setup: `LOGIN_SETUP.md`.
+
 ## Data Migration (Local JSON → Supabase)
 1. Configure `frontend/.env.local` (see above).
 2. Run the migration:

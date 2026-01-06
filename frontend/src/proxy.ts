@@ -33,6 +33,7 @@ const setCachedAuth = (key: string, allowed: boolean) => {
 export async function proxy(request: NextRequest) {
   const url = new URL(request.url);
   const pathname = url.pathname;
+  const params = url.searchParams;
 
   if (
     pathname.startsWith("/login") ||
@@ -50,6 +51,10 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith("/together_at_the_table_favicon.png") ||
     pathname.startsWith("/together_at_the_table_full.png")
   ) {
+    return NextResponse.next();
+  }
+
+  if (params.get("code") || params.get("error") || params.get("type") === "recovery") {
     return NextResponse.next();
   }
 

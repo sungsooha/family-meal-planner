@@ -6,6 +6,7 @@ import { useRecipes } from "@/lib/useRecipes";
 import { useSWRConfig } from "swr";
 import Image from "next/image";
 import { BLUR_DATA_URL } from "@/lib/image";
+import { getSupabaseBrowser } from "@/lib/supabase";
 import {
   CalendarDays,
   Lock,
@@ -136,6 +137,41 @@ export default function WeeklyPlanPage() {
       setCalendarMonth(new Date());
       setStartDate(today);
       window.localStorage.setItem("mealplanner-start-date", today);
+    }
+  }, []);
+
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const code = url.searchParams.get("code");
+    const error = url.searchParams.get("error");
+    const type = url.searchParams.get("type");
+    if (code || error) {
+      const redirect = new URL("/auth/callback", url.origin);
+      url.searchParams.forEach((value, key) => {
+        redirect.searchParams.set(key, value);
+      });
+      if (type === "recovery") {
+        redirect.searchParams.set("reset", "1");
+      }
+      window.location.href = redirect.toString();
+    }
+    const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+    const accessToken = hashParams.get("access_token");
+    const refreshToken = hashParams.get("refresh_token");
+    const hashType = hashParams.get("type");
+    if (accessToken && refreshToken) {
+      const supabase = getSupabaseBrowser();
+      supabase.auth
+        .setSession({ access_token: accessToken, refresh_token: refreshToken })
+        .then(({ error: sessionError }) => {
+          if (sessionError) return;
+          if (hashType === "recovery") {
+            window.location.href = "/login?mode=reset";
+            return;
+          }
+          window.history.replaceState(null, "", `${url.pathname}${url.search}`);
+        })
+        .catch(() => {});
     }
   }, []);
 
