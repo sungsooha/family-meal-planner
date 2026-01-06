@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import useSWR from "swr";
 import { X, Pencil, RefreshCw, Lock, Unlock, Trash2, Printer, SlidersHorizontal } from "lucide-react";
 import { useToast } from "@/components/ToastProvider";
 
@@ -29,16 +30,13 @@ export default function SavedBuyListsPage() {
   const [actionHidden, setActionHidden] = useState(false);
   const lastScrollY = useRef(0);
 
-  const loadLists = () => {
-    fetch("/api/buy-lists")
-      .then((res) => res.json())
-      .then((data) => setLists((data.lists ?? []) as BuyList[]))
-      .catch(() => setLists([]));
-  };
+  const { data: listsData, mutate: mutateLists } = useSWR<{ lists: BuyList[] }>("/api/buy-lists");
 
   useEffect(() => {
-    loadLists();
-  }, []);
+    if (listsData?.lists) {
+      setLists(listsData.lists);
+    }
+  }, [listsData]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -62,7 +60,7 @@ export default function SavedBuyListsPage() {
       return;
     }
     showToast("List synced from current week.");
-    loadLists();
+    await mutateLists();
   };
 
   const handleToggleLock = async (list: BuyList) => {
@@ -76,7 +74,7 @@ export default function SavedBuyListsPage() {
       showToast("Unable to update list.");
       return;
     }
-    loadLists();
+    await mutateLists();
   };
 
   const handleDelete = async (list: BuyList) => {
@@ -85,7 +83,7 @@ export default function SavedBuyListsPage() {
       showToast("Unable to delete list.");
       return;
     }
-    loadLists();
+    await mutateLists();
   };
 
   const openEdit = (list: BuyList) => {
@@ -141,7 +139,7 @@ export default function SavedBuyListsPage() {
       return;
     }
     setEditing(null);
-    loadLists();
+    await mutateLists();
   };
 
   return (

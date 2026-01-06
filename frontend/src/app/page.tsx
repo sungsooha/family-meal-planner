@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import useSWR from "swr";
 import {
   CalendarDays,
   Lock,
@@ -94,31 +95,35 @@ export default function WeeklyPlanPage() {
   const pickerPanelRef = useRef<HTMLDivElement | null>(null);
   const recipesById = useMemo(() => new Map(recipes.map((recipe) => [recipe.recipe_id, recipe])), [recipes]);
 
-  const loadPlan = useCallback(async (targetDate?: string) => {
-    const query = targetDate ? `?start_date=${targetDate}` : "";
-    const response = await fetch(`/api/plan${query}`);
-    const data = (await response.json()) as WeeklyPlan;
-    setPlan(data);
-    setStartDate(data.start_date);
-  }, []);
+  const planKey = useMemo(() => {
+    const query = startDate ? `?start_date=${startDate}` : "";
+    return `/api/plan${query}`;
+  }, [startDate]);
 
-  const loadRecipes = useCallback(async () => {
-    const response = await fetch("/api/recipes");
-    const data = (await response.json()) as Recipe[];
-    setRecipes(data);
-  }, []);
+  const { data: planData, mutate: mutatePlan } = useSWR<WeeklyPlan>(planKey);
+  const { data: recipesData, mutate: mutateRecipes } = useSWR<Recipe[]>("/api/recipes");
 
   useEffect(() => {
     const stored = window.localStorage.getItem("mealplanner-start-date");
     if (stored) {
       const storedDate = new Date(`${stored}T00:00:00`);
       setCalendarMonth(new Date(storedDate.getFullYear(), storedDate.getMonth(), 1));
-      loadPlan(stored);
-    } else {
-      loadPlan(undefined);
+      setStartDate(stored);
     }
-    loadRecipes();
-  }, [loadPlan, loadRecipes]);
+  }, []);
+
+  useEffect(() => {
+    if (planData) {
+      setPlan(planData);
+      setStartDate(planData.start_date);
+    }
+  }, [planData]);
+
+  useEffect(() => {
+    if (recipesData) {
+      setRecipes(recipesData);
+    }
+  }, [recipesData]);
 
   useEffect(() => {
     fetch("/api/plan/dates")
@@ -221,6 +226,7 @@ export default function WeeklyPlanPage() {
     if (!startDate) return;
     const updated = await postJson<WeeklyPlan>("/api/plan/generate", { start_date: startDate });
     setPlan(updated);
+    await mutatePlan();
   };
 
   const handleStartDate = async (value: string) => {
@@ -229,6 +235,7 @@ export default function WeeklyPlanPage() {
     const updated = await postJson<WeeklyPlan>("/api/plan/start", { start_date: value });
     setPlan(updated);
     setPickerOpen(false);
+    await mutatePlan();
   };
 
   const handleAssign = async (recipeId: string) => {
@@ -241,26 +248,31 @@ export default function WeeklyPlanPage() {
     });
     setPlan(updated);
     setSelectMeal(null);
+    await mutatePlan();
   };
 
   const handleClear = async (date: string, meal: string) => {
     const updated = await postJson<WeeklyPlan>("/api/plan/clear", { date, meal, start_date: startDate });
     setPlan(updated);
+    await mutatePlan();
   };
 
   const handleToggleLock = async (date: string, meal: string) => {
     const updated = await postJson<WeeklyPlan>("/api/plan/lock", { date, meal, start_date: startDate });
     setPlan(updated);
+    await mutatePlan();
   };
 
   const handleLockAll = async (locked: boolean) => {
     const updated = await postJson<WeeklyPlan>("/api/plan/lock-all", { locked, start_date: startDate });
     setPlan(updated);
+    await mutatePlan();
   };
 
   const handleToggleComplete = async (date: string, meal: string) => {
     const updated = await postJson<WeeklyPlan>("/api/plan/complete", { date, meal, start_date: startDate });
     setPlan(updated);
+    await mutatePlan();
   };
 
   const handlePrintWeek = () => {
@@ -861,7 +873,7 @@ export default function WeeklyPlanPage() {
                   setRecipeIdInput("");
                   setSourceUrlInput("");
                   setShowImport(false);
-                  loadRecipes();
+                  await mutateRecipes();
                 }}
               >
                 Add recipe

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
+import useSWR from "swr";
 import { ArrowLeft, ListChecks, ShoppingBasket, SlidersHorizontal } from "lucide-react";
 import { useLanguage } from "@/components/LanguageProvider";
 import { useToast } from "@/components/ToastProvider";
@@ -25,21 +26,15 @@ type Recipe = {
 export default function RecipeDetailPage() {
   const params = useParams();
   const idParam = Array.isArray(params?.id) ? params?.id[0] : params?.id;
-  const [recipe, setRecipe] = useState<Recipe | null>(null);
+  const { data: recipe, mutate: mutateRecipe } = useSWR<Recipe | null>(
+    idParam ? `/api/recipes/${idParam}` : null,
+  );
   const { language } = useLanguage();
   const { showToast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState<Recipe | null>(null);
   const [actionHidden, setActionHidden] = useState(false);
   const lastScrollY = useRef(0);
-
-  useEffect(() => {
-    if (!idParam) return;
-    fetch(`/api/recipes/${idParam}`)
-      .then((res) => res.json())
-      .then((data) => setRecipe(data as Recipe))
-      .catch(() => setRecipe(null));
-  }, [idParam]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -103,10 +98,7 @@ export default function RecipeDetailPage() {
     if (!response.ok) return;
     setIsEditing(false);
     showToast("Saved. Weekly plan and shopping list refreshed.");
-    fetch(`/api/recipes/${idParam}`)
-      .then((res) => res.json())
-      .then((data) => setRecipe(data as Recipe))
-      .catch(() => setRecipe(null));
+    await mutateRecipe();
   };
 
   const youtubeId = useMemo(() => {

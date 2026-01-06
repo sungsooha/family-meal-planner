@@ -3,6 +3,7 @@
 import Link from "next/link";
 import type { ChangeEvent } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import useSWR from "swr";
 import { Filter, Upload, X, Shuffle, SlidersHorizontal } from "lucide-react";
 
 type Ingredient = { name: string; quantity: number | string; unit: string };
@@ -24,7 +25,8 @@ type Recipe = {
 const MEAL_TYPES = ["breakfast", "lunch", "dinner", "snack"] as const;
 
 export default function RecipesPage() {
-  const [recipes, setRecipes] = useState<Recipe[]>([]);
+  const { data: recipeData, mutate: mutateRecipes } = useSWR<Recipe[]>("/api/recipes");
+  const recipes = recipeData ?? [];
   const [filters, setFilters] = useState<string[]>([]);
   const [jsonInput, setJsonInput] = useState("");
   const [jsonError, setJsonError] = useState("");
@@ -34,13 +36,6 @@ export default function RecipesPage() {
   const [sourceUrlInput, setSourceUrlInput] = useState("");
   const [actionHidden, setActionHidden] = useState(false);
   const lastScrollY = useRef(0);
-
-  useEffect(() => {
-    fetch("/api/recipes")
-      .then((res) => res.json())
-      .then((data) => setRecipes(data as Recipe[]))
-      .catch(() => setRecipes([]));
-  }, []);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -119,10 +114,7 @@ export default function RecipesPage() {
     setRecipeIdInput("");
     setSourceUrlInput("");
     setShowImport(false);
-    fetch("/api/recipes")
-      .then((res) => res.json())
-      .then((data) => setRecipes(data as Recipe[]))
-      .catch(() => setRecipes([]));
+    await mutateRecipes();
   };
 
   const generateRecipeId = () => {

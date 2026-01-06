@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import useSWR from "swr";
 import {
   Plus,
   Minus,
@@ -72,20 +73,25 @@ export default function ShoppingPage() {
   const [actionHidden, setActionHidden] = useState(false);
   const lastScrollY = useRef(0);
 
-  const loadShopping = useCallback(async (targetLang = lang, targetStart = startDate) => {
-    const params = new URLSearchParams({ lang: targetLang });
-    if (targetStart) params.set("start_date", targetStart);
-    const response = await fetch(`/api/shopping?${params.toString()}`);
-    const data = (await response.json()) as ShoppingPayload;
-    setWeeklyList(data.weekly_list);
-    setShoppingList(data.shopping_items);
+  const shoppingKey = useMemo(() => {
+    const params = new URLSearchParams({ lang });
+    if (startDate) params.set("start_date", startDate);
+    return `/api/shopping?${params.toString()}`;
   }, [lang, startDate]);
+
+  const { data: shoppingData, mutate: mutateShopping } = useSWR<ShoppingPayload>(shoppingKey);
 
   useEffect(() => {
     const stored = window.localStorage.getItem("mealplanner-start-date");
     if (stored) setStartDate(stored);
-    loadShopping(lang, stored ?? "");
-  }, [lang, loadShopping]);
+  }, []);
+
+  useEffect(() => {
+    if (shoppingData) {
+      setWeeklyList(shoppingData.weekly_list);
+      setShoppingList(shoppingData.shopping_items);
+    }
+  }, [shoppingData]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -104,12 +110,12 @@ export default function ShoppingPage() {
 
   const handleAdd = async (item: ShoppingItem) => {
     await postAction({ action: "add", key: item.key, name: item.name, unit: item.unit, quantity: item.quantity, lang });
-    loadShopping(lang, startDate);
+    await mutateShopping();
   };
 
   const handleRemove = async (item: ShoppingItem) => {
     await postAction({ action: "remove", key: item.key, lang });
-    loadShopping(lang, startDate);
+    await mutateShopping();
   };
 
   const handleAddManual = async () => {
@@ -124,7 +130,7 @@ export default function ShoppingPage() {
     setManualName("");
     setManualQuantity("");
     setManualUnit("");
-    loadShopping(lang, startDate);
+    await mutateShopping();
   };
 
   const handlePrintChecklist = () => {
@@ -207,7 +213,7 @@ export default function ShoppingPage() {
     if (!editingItem) return;
     await postAction({ action: "update", key: editingItem.key, quantity: editingQuantity, lang });
     setEditingItem(null);
-    loadShopping(lang, startDate);
+    await mutateShopping();
   };
 
   const openRecipes = (ids: string[]) => {
@@ -218,16 +224,13 @@ export default function ShoppingPage() {
 
   const activeRecipeId = recipeIds[recipeIndex];
 
+  const { data: recipeDetailData } = useSWR<Recipe | null>(
+    activeRecipeId ? `/api/recipes/${activeRecipeId}` : null,
+  );
+
   useEffect(() => {
-    if (!activeRecipeId) {
-      setRecipeDetail(null);
-      return;
-    }
-    fetch(`/api/recipes/${activeRecipeId}`)
-      .then((res) => res.json())
-      .then((data) => setRecipeDetail(data as Recipe))
-      .catch(() => setRecipeDetail(null));
-  }, [activeRecipeId]);
+    setRecipeDetail(recipeDetailData ?? null);
+  }, [recipeDetailData]);
 
   const recipeIngredients = useMemo(() => {
     if (!recipeDetail) return [];
