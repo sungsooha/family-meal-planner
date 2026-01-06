@@ -13,7 +13,7 @@ export default function SWRProvider({ children }: SWRProviderProps) {
       value={{
         fetcher: (resource: string) => fetch(resource).then((res) => res.json()),
         dedupingInterval: 300000,
-        revalidateOnFocus: false,
+        revalidateOnFocus: true,
         revalidateOnReconnect: false,
         keepPreviousData: true,
       }}

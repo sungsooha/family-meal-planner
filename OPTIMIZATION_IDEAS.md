@@ -16,3 +16,4 @@
 ## UX Perceived Performance
 - Skeleton loaders for first-time loads (plan, recipes, shopping).
 - Preserve list scroll and focus state between navigations.
+- Enable revalidate-on-focus to refresh cross-device updates. (implemented)

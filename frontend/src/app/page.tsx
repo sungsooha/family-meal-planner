@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import useSWR from "swr";
 import { useRecipes } from "@/lib/useRecipes";
+import { useSWRConfig } from "swr";
 import {
   CalendarDays,
   Lock,
@@ -102,6 +103,17 @@ export default function WeeklyPlanPage() {
   const pickerButtonRef = useRef<HTMLButtonElement | null>(null);
   const pickerPanelRef = useRef<HTMLDivElement | null>(null);
   const { recipes, recipesById, mutateRecipes } = useRecipes<Recipe>();
+  const { mutate } = useSWRConfig();
+  const prefetchedRecipes = useRef(new Set<string>());
+  const prefetchRecipe = useCallback((recipeId: string) => {
+    if (prefetchedRecipes.current.has(recipeId)) return;
+    prefetchedRecipes.current.add(recipeId);
+    mutate(
+      `/api/recipes/${recipeId}`,
+      fetch(`/api/recipes/${recipeId}`).then((res) => res.json()),
+      { populateCache: true, revalidate: false },
+    );
+  }, [mutate]);
 
   const planKey = useMemo(() => {
     const query = startDate ? `?start_date=${startDate}` : "";
@@ -611,6 +623,11 @@ export default function WeeklyPlanPage() {
                                   setActiveRecipeId(entry?.recipe_id ?? null);
                                   setActiveMealContext({ date: day.date, meal });
                                 }}
+                                onMouseEnter={() => {
+                                  if (entry?.recipe_id) {
+                                    prefetchRecipe(entry.recipe_id);
+                                  }
+                                }}
                               >
                                 {displayName}
                               </button>
@@ -765,6 +782,9 @@ export default function WeeklyPlanPage() {
                   key={recipe.recipe_id}
                   className="flex items-center justify-between rounded-2xl border border-slate-100 px-4 py-3 text-left transition hover:-translate-y-0.5 hover:border-slate-200 hover:bg-slate-50 hover:shadow-md hover:ring-1 hover:ring-emerald-200/70"
                   onClick={() => handleAssign(recipe.recipe_id)}
+                  onMouseEnter={() => {
+                    mutate(`/api/recipes/${recipe.recipe_id}`, recipe, false);
+                  }}
                 >
                   <div>
                     <p className="text-sm font-semibold text-slate-900">{recipe.name}</p>
@@ -798,6 +818,11 @@ export default function WeeklyPlanPage() {
                 onClick={() => {
                   setSelectMeal(addMenu);
                   setAddMenu(null);
+                }}
+                onMouseEnter={() => {
+                  filteredRecipes.forEach((recipe) => {
+                    prefetchRecipe(recipe.recipe_id);
+                  });
                 }}
               >
                 Choose from recipes

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import useSWR from "swr";
+import { useSWRConfig } from "swr";
 import {
   Plus,
   Minus,
@@ -80,6 +81,20 @@ export default function ShoppingPage() {
   const [actionHidden, setActionHidden] = useState(false);
   const [actionPinned, setActionPinned] = useState(false);
   const pinnedScroll = useRef(0);
+  const { mutate } = useSWRConfig();
+  const prefetchedRecipes = useRef(new Set<string>());
+  const prefetchRecipe = useCallback(
+    (recipeId: string) => {
+      if (prefetchedRecipes.current.has(recipeId)) return;
+      prefetchedRecipes.current.add(recipeId);
+      mutate(
+        `/api/recipes/${recipeId}`,
+        fetch(`/api/recipes/${recipeId}`).then((res) => res.json()),
+        { populateCache: true, revalidate: false },
+      );
+    },
+    [mutate],
+  );
 
   const shoppingKey = useMemo(() => {
     const params = new URLSearchParams({ lang });
@@ -242,6 +257,7 @@ export default function ShoppingPage() {
 
   const openRecipes = (ids: string[]) => {
     if (!ids.length) return;
+    ids.forEach((id) => prefetchRecipe(id));
     setRecipeIds(ids);
     setRecipeIndex(0);
   };

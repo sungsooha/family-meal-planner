@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import type { ChangeEvent } from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSWRConfig } from "swr";
 import { useRecipes } from "@/lib/useRecipes";
 import { Filter, Upload, X, Shuffle, SlidersHorizontal } from "lucide-react";
@@ -28,6 +28,16 @@ const MEAL_TYPES = ["breakfast", "lunch", "dinner", "snack"] as const;
 export default function RecipesPage() {
   const { recipes, mutateRecipes } = useRecipes<Recipe>();
   const { mutate } = useSWRConfig();
+  const prefetchedRecipes = useRef(new Set<string>());
+  const prefetchRecipe = useCallback((recipeId: string) => {
+    if (prefetchedRecipes.current.has(recipeId)) return;
+    prefetchedRecipes.current.add(recipeId);
+    mutate(
+      `/api/recipes/${recipeId}`,
+      fetch(`/api/recipes/${recipeId}`).then((res) => res.json()),
+      { populateCache: true, revalidate: false },
+    );
+  }, [mutate]);
   const [filters, setFilters] = useState<string[]>([]);
   const [jsonInput, setJsonInput] = useState("");
   const [jsonError, setJsonError] = useState("");
@@ -192,7 +202,7 @@ export default function RecipesPage() {
             href={`/recipes/${recipe.recipe_id}`}
             className="rounded-2xl border border-white/70 bg-white/80 p-4 text-left shadow-sm transition hover:-translate-y-1 hover:shadow-lg hover:ring-2 hover:ring-emerald-200/70"
             onMouseEnter={() => {
-              mutate(`/api/recipes/${recipe.recipe_id}`, recipe, false);
+              prefetchRecipe(recipe.recipe_id);
             }}
           >
             <div className="flex items-start gap-3 border-b border-dashed border-slate-200 pb-2">
