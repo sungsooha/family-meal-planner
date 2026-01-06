@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import useSWR from "swr";
+import { useRecipes } from "@/lib/useRecipes";
 import { ArrowLeft, ListChecks, ShoppingBasket, SlidersHorizontal } from "lucide-react";
 import { useLanguage } from "@/components/LanguageProvider";
 import { useToast } from "@/components/ToastProvider";
@@ -26,8 +27,11 @@ type Recipe = {
 export default function RecipeDetailPage() {
   const params = useParams();
   const idParam = Array.isArray(params?.id) ? params?.id[0] : params?.id;
+  const { recipesById } = useRecipes<Recipe>();
+  const fallbackRecipe = idParam ? recipesById.get(idParam) ?? undefined : undefined;
   const { data: recipe, mutate: mutateRecipe } = useSWR<Recipe | null>(
     idParam ? `/api/recipes/${idParam}` : null,
+    { fallbackData: fallbackRecipe },
   );
   const { language } = useLanguage();
   const { showToast } = useToast();

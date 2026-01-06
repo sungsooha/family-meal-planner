@@ -2,6 +2,7 @@
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import useSWR from "swr";
+import { useRecipes } from "@/lib/useRecipes";
 import {
   CalendarDays,
   Lock,
@@ -67,7 +68,6 @@ async function postJson<T>(url: string, payload: unknown): Promise<T> {
 
 export default function WeeklyPlanPage() {
   const [plan, setPlan] = useState<WeeklyPlan | null>(null);
-  const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [startDate, setStartDate] = useState<string>("");
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerPos, setPickerPos] = useState<{ top: number; left: number } | null>(null);
@@ -93,7 +93,7 @@ export default function WeeklyPlanPage() {
   const lastScrollY = useRef(0);
   const pickerButtonRef = useRef<HTMLButtonElement | null>(null);
   const pickerPanelRef = useRef<HTMLDivElement | null>(null);
-  const recipesById = useMemo(() => new Map(recipes.map((recipe) => [recipe.recipe_id, recipe])), [recipes]);
+  const { recipes, recipesById, mutateRecipes } = useRecipes<Recipe>();
 
   const planKey = useMemo(() => {
     const query = startDate ? `?start_date=${startDate}` : "";
@@ -101,7 +101,6 @@ export default function WeeklyPlanPage() {
   }, [startDate]);
 
   const { data: planData, mutate: mutatePlan } = useSWR<WeeklyPlan>(planKey);
-  const { data: recipesData, mutate: mutateRecipes } = useSWR<Recipe[]>("/api/recipes");
 
   useEffect(() => {
     const stored = window.localStorage.getItem("mealplanner-start-date");
@@ -119,11 +118,6 @@ export default function WeeklyPlanPage() {
     }
   }, [planData]);
 
-  useEffect(() => {
-    if (recipesData) {
-      setRecipes(recipesData);
-    }
-  }, [recipesData]);
 
   useEffect(() => {
     fetch("/api/plan/dates")
