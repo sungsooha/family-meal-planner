@@ -4,6 +4,8 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import useSWR from "swr";
 import { useRecipes } from "@/lib/useRecipes";
 import { useSWRConfig } from "swr";
+import Image from "next/image";
+import { BLUR_DATA_URL } from "@/lib/image";
 import {
   CalendarDays,
   Lock,
@@ -598,7 +600,16 @@ export default function WeeklyPlanPage() {
                       >
                         <div className="flex items-center gap-3">
                           {thumbnail ? (
-                            <img src={thumbnail} alt="" className="h-10 w-10 rounded-full object-cover" />
+                            <Image
+                              src={thumbnail}
+                              alt=""
+                              width={40}
+                              height={40}
+                              className="h-10 w-10 rounded-full object-cover"
+                              sizes="40px"
+                              placeholder="blur"
+                              blurDataURL={BLUR_DATA_URL}
+                            />
                           ) : (
                             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-slate-600 shadow-sm">
                               <Utensils className="h-4 w-4" />

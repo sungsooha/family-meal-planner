@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useLanguage } from "./LanguageProvider";
 import { getSupabaseBrowser } from "@/lib/supabase";
+import { BLUR_DATA_URL } from "@/lib/image";
 
 export default function Header() {
   const { language, setLanguage } = useLanguage();
@@ -48,10 +50,15 @@ export default function Header() {
     >
       <div className="mx-auto flex w-full max-w-6xl flex-col items-start justify-between gap-2 px-6 pb-2 pt-2 md:flex-row md:items-center">
         <div className="flex items-center">
-          <img
+          <Image
             src="/ha_family_logo.png"
             alt="Ha family illustration"
+            width={144}
+            height={144}
             className="h-24 w-auto sm:h-28 md:h-32 lg:h-36"
+            placeholder="blur"
+            blurDataURL={BLUR_DATA_URL}
+            priority
           />
         </div>
       <div className="flex w-full flex-wrap items-center gap-2 text-xs font-medium text-slate-600 md:w-auto">

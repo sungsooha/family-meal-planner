@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import type { ChangeEvent } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSWRConfig } from "swr";
 import { useRecipes } from "@/lib/useRecipes";
+import { BLUR_DATA_URL } from "@/lib/image";
 import { Filter, Upload, X, Shuffle, SlidersHorizontal } from "lucide-react";
 
 type Ingredient = { name: string; quantity: number | string; unit: string };
@@ -207,11 +209,15 @@ export default function RecipesPage() {
           >
             <div className="flex items-start gap-3 border-b border-dashed border-slate-200 pb-2">
               {recipe.thumbnail_url ? (
-                <img
+                <Image
                   src={recipe.thumbnail_url}
                   alt={recipe.name}
+                  width={64}
+                  height={64}
                   className="h-16 w-16 rounded-xl object-cover"
-                  loading="lazy"
+                  sizes="64px"
+                  placeholder="blur"
+                  blurDataURL={BLUR_DATA_URL}
                 />
               ) : (
                 <div className="h-16 w-16 rounded-xl bg-slate-100" />
