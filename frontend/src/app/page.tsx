@@ -1124,11 +1124,22 @@ export default function WeeklyPlanPage() {
       )}
 
       {activeRecipe && (
-        <div
-          className={`fixed inset-y-0 right-0 z-40 w-[90vw] max-w-2xl overflow-y-auto border-l border-slate-200 bg-white/95 p-6 pb-16 shadow-2xl backdrop-blur transition-transform duration-300 ease-out lg:w-[50vw] ${
-            drawerOpen ? "translate-x-0" : "translate-x-full"
-          }`}
-        >
+        <>
+          <div
+            className={`fixed inset-0 z-30 bg-slate-900/20 transition-opacity duration-300 ${
+              drawerOpen ? "opacity-100" : "pointer-events-none opacity-0"
+            }`}
+            onClick={() => {
+              setDrawerOpen(false);
+              setTimeout(() => setActiveRecipeId(null), 250);
+              setActiveMealContext(null);
+            }}
+          />
+          <div
+            className={`fixed inset-y-0 right-0 z-40 w-[90vw] max-w-2xl overflow-y-auto border-l border-slate-200 bg-white/95 p-6 pb-16 shadow-2xl backdrop-blur transition-transform duration-300 ease-out lg:w-[50vw] ${
+              drawerOpen ? "translate-x-0" : "translate-x-full"
+            }`}
+          >
           <div className="flex items-start justify-between gap-3">
             <div>
               <h3 className="text-lg font-semibold text-slate-900">{activeRecipe.name}</h3>
@@ -1242,6 +1253,7 @@ export default function WeeklyPlanPage() {
             </div>
           </div>
         </div>
+        </>
       )}
     </div>
   );
