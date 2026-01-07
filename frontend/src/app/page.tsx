@@ -95,6 +95,7 @@ async function postJson<T>(url: string, payload: unknown): Promise<T> {
 export default function WeeklyPlanPage() {
   const [plan, setPlan] = useState<WeeklyPlan | null>(null);
   const [startDate, setStartDate] = useState<string>("");
+  const [startDateReady, setStartDateReady] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerPos, setPickerPos] = useState<{ top: number; left: number } | null>(null);
   const [pickerReady, setPickerReady] = useState(false);
@@ -140,7 +141,9 @@ export default function WeeklyPlanPage() {
     return `/api/plan${query}`;
   }, [startDate]);
 
-  const { data: planData, mutate: mutatePlan } = useSWR<WeeklyPlan>(planKey);
+  const { data: planData, mutate: mutatePlan } = useSWR<WeeklyPlan>(
+    startDateReady && startDate ? planKey : null,
+  );
   const { data: activeRecipeData } = useSWR<Recipe | null>(
     activeRecipeId ? `/api/recipes/${activeRecipeId}` : null,
   );
@@ -153,12 +156,14 @@ export default function WeeklyPlanPage() {
       const storedDate = new Date(`${stored}T00:00:00`);
       setCalendarMonth(new Date(storedDate.getFullYear(), storedDate.getMonth(), 1));
       setStartDate(stored);
-    } else {
-      const today = formatLocalDate(new Date());
-      setCalendarMonth(new Date());
-      setStartDate(today);
-      window.localStorage.setItem("mealplanner-start-date", today);
+      setStartDateReady(true);
+      return;
     }
+    const today = formatLocalDate(new Date());
+    setCalendarMonth(new Date());
+    setStartDate(today);
+    window.localStorage.setItem("mealplanner-start-date", today);
+    setStartDateReady(true);
   }, []);
 
   useEffect(() => {
@@ -199,7 +204,9 @@ export default function WeeklyPlanPage() {
   useEffect(() => {
     if (planData) {
       setPlan(planData);
-      setStartDate(planData.start_date);
+      if (!startDate) {
+        setStartDate(planData.start_date);
+      }
     }
   }, [planData]);
 
