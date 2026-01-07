@@ -26,6 +26,7 @@ export async function GET(request: Request) {
       thumbnail_url: recipe.thumbnail_url ?? null,
       notes: recipe.notes ?? null,
       family_feedback_score: recipe.family_feedback_score ?? null,
+      family_feedback: recipe.family_feedback ?? null,
     }));
     return jsonWithCache(summary);
   }

@@ -1,6 +1,7 @@
 import { promises as fs } from "fs";
 import path from "path";
 import { getSupabaseAdmin, isSupabaseEnabled } from "./supabase";
+import { normalizeFeedback } from "./feedback";
 
 export type Ingredient = {
   name: string;
@@ -18,6 +19,7 @@ export type Recipe = {
   thumbnail_url?: string | null;
   notes?: string;
   family_feedback_score?: number;
+  family_feedback?: Record<string, number>;
   ingredients?: Ingredient[];
   ingredients_original?: Ingredient[];
   instructions?: string[];
@@ -123,6 +125,9 @@ function normalizeRecipe(recipe: Recipe): Recipe {
   if (!normalized.meal_types || normalized.meal_types.length === 0) {
     const legacy = normalized.meal_type;
     normalized.meal_types = legacy ? [legacy] : [];
+  }
+  if (normalized.family_feedback) {
+    normalized.family_feedback = normalizeFeedback(normalized.family_feedback) ?? undefined;
   }
   return normalized;
 }
@@ -261,6 +266,20 @@ export async function updateRecipe(recipeId: string, payload: Recipe): Promise<b
     return false;
   }
   return false;
+}
+
+export async function updateRecipeFeedback(
+  recipeId: string,
+  feedback: Record<string, number>,
+): Promise<Recipe | null> {
+  const recipe = await getRecipeById(recipeId);
+  if (!recipe) return null;
+  const next: Recipe = {
+    ...recipe,
+    family_feedback: normalizeFeedback(feedback) ?? {},
+  };
+  const success = await updateRecipe(recipeId, next);
+  return success ? next : null;
 }
 
 function parseIsoDate(dateText: string): Date {
@@ -586,6 +605,7 @@ function recipeFromRow(row: any): Recipe {
     thumbnail_url: row.thumbnail_url ?? null,
     notes: row.notes ?? undefined,
     family_feedback_score: row.family_feedback_score ?? undefined,
+    family_feedback: normalizeFeedback(row.family_feedback ?? undefined),
     ingredients: row.ingredients ?? [],
     ingredients_original: row.ingredients_original ?? [],
     instructions: row.instructions ?? [],
@@ -603,6 +623,7 @@ function recipeToRow(recipe: Recipe) {
     thumbnail_url: recipe.thumbnail_url ?? null,
     notes: recipe.notes ?? null,
     family_feedback_score: recipe.family_feedback_score ?? null,
+    family_feedback: normalizeFeedback(recipe.family_feedback ?? undefined) ?? null,
     ingredients: recipe.ingredients ?? [],
     ingredients_original: recipe.ingredients_original ?? [],
     instructions: recipe.instructions ?? [],

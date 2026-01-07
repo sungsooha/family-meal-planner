@@ -7,6 +7,7 @@ import { useSWRConfig } from "swr";
 import Image from "next/image";
 import { BLUR_DATA_URL } from "@/lib/image";
 import { getSupabaseBrowser } from "@/lib/supabase";
+import { getFeedbackSummary } from "@/lib/feedback";
 import {
   CalendarDays,
   Lock,
@@ -23,6 +24,7 @@ import {
 } from "lucide-react";
 import { useLanguage } from "@/components/LanguageProvider";
 import ActionMenu from "@/components/ActionMenu";
+import FamilyFeedback from "@/components/FamilyFeedback";
 
 type Ingredient = { name: string; quantity: number | string; unit: string };
 type Recipe = {
@@ -34,10 +36,18 @@ type Recipe = {
   thumbnail_url?: string | null;
   notes?: string;
   family_feedback_score?: number;
+  family_feedback?: Record<string, number>;
   ingredients?: Ingredient[];
   ingredients_original?: Ingredient[];
   instructions?: string[];
   instructions_original?: string[];
+};
+type FamilyMember = {
+  id: string;
+  label: string;
+};
+type AppConfig = {
+  family_members?: FamilyMember[];
 };
 type Meal = {
   recipe_id?: string;
@@ -100,6 +110,11 @@ export default function WeeklyPlanPage() {
   const [collapsedDays, setCollapsedDays] = useState<Record<string, boolean>>({});
   const [collapsePast, setCollapsePast] = useState(true);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const activeRecipeRef = useRef<Recipe | null>(null);
+  const feedbackVersionRef = useRef(0);
+  const feedbackSavingRef = useRef(false);
+  const feedbackTimersRef = useRef<Map<string, number>>(new Map());
+  const [feedbackTarget, setFeedbackTarget] = useState<{ date: string; meal: string } | null>(null);
   const pickerButtonRef = useRef<HTMLButtonElement | null>(null);
   const pickerPanelRef = useRef<HTMLDivElement | null>(null);
   const { recipes, recipesById, mutateRecipes } = useRecipes<Recipe>();
@@ -124,6 +139,7 @@ export default function WeeklyPlanPage() {
   const { data: activeRecipeData } = useSWR<Recipe | null>(
     activeRecipeId ? `/api/recipes/${activeRecipeId}` : null,
   );
+  const { data: configData } = useSWR<{ config: AppConfig }>("/api/config");
   const isPlanLoading = !planData && !plan;
 
   useEffect(() => {
@@ -218,6 +234,53 @@ export default function WeeklyPlanPage() {
       setDrawerOpen(true);
     }
   }, [activeRecipe]);
+
+  useEffect(() => {
+    activeRecipeRef.current = activeRecipe;
+  }, [activeRecipe]);
+
+  const updateFeedbackCaches = (recipeId: string, feedback: Record<string, number>) => {
+    mutate(
+      `/api/recipes/${recipeId}`,
+      (current?: Recipe | null) => (current ? { ...current, family_feedback: feedback } : current),
+      { revalidate: false },
+    );
+    mutate(
+      "/api/recipes?view=summary",
+      (current?: Recipe[]) =>
+        current?.map((recipe) =>
+          recipe.recipe_id === recipeId ? { ...recipe, family_feedback: feedback } : recipe,
+        ),
+      { revalidate: false },
+    );
+    mutate(
+      "/api/recipes",
+      (current?: Recipe[]) =>
+        current?.map((recipe) =>
+          recipe.recipe_id === recipeId ? { ...recipe, family_feedback: feedback } : recipe,
+        ),
+      { revalidate: false },
+    );
+  };
+
+  const scheduleFeedbackSave = (recipeId: string, feedback: Record<string, number>) => {
+    const existing = feedbackTimersRef.current.get(recipeId);
+    if (existing) {
+      window.clearTimeout(existing);
+    }
+    const timer = window.setTimeout(async () => {
+      feedbackTimersRef.current.delete(recipeId);
+      const response = await fetch(`/api/recipes/${recipeId}/feedback`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ family_feedback: feedback }),
+      });
+      if (!response.ok) {
+        mutate(`/api/recipes/${recipeId}`);
+      }
+    }, 400);
+    feedbackTimersRef.current.set(recipeId, timer);
+  };
 
   useLayoutEffect(() => {
     if (!pickerOpen) return;
@@ -396,6 +459,7 @@ export default function WeeklyPlanPage() {
 
   const ingredientList = language === "original" ? activeRecipe?.ingredients_original : activeRecipe?.ingredients;
   const instructionList = language === "original" ? activeRecipe?.instructions_original : activeRecipe?.instructions;
+  const members = configData?.config.family_members ?? [];
   const activeDay = activeMealContext?.date
     ? plan?.days.find((day) => day.date === activeMealContext.date) ?? null
     : null;
@@ -413,6 +477,58 @@ export default function WeeklyPlanPage() {
       return null;
     }
   }, [activeRecipe?.source_url]);
+
+  const saveFeedback = async () => {
+    if (feedbackSavingRef.current) return;
+    feedbackSavingRef.current = true;
+    const version = feedbackVersionRef.current;
+    const snapshot = activeRecipeRef.current;
+    if (!snapshot) {
+      feedbackSavingRef.current = false;
+      return;
+    }
+    const response = await fetch(`/api/recipes/${snapshot.recipe_id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(snapshot),
+    });
+    feedbackSavingRef.current = false;
+    if (!response.ok) {
+      mutate(`/api/recipes/${snapshot.recipe_id}`);
+      return;
+    }
+    if (feedbackVersionRef.current !== version) {
+      await saveFeedback();
+    }
+  };
+
+  const handleFeedbackChange = async (memberId: string, value: number) => {
+    if (!activeRecipe) return;
+    const baseRecipe = activeRecipeRef.current ?? activeRecipe;
+    const recipeId = activeRecipe.recipe_id;
+    const next = {
+      ...baseRecipe,
+      family_feedback: { ...(baseRecipe.family_feedback ?? {}), [memberId]: value },
+    };
+    activeRecipeRef.current = next;
+    setActiveRecipe(next);
+    updateFeedbackCaches(recipeId, next.family_feedback ?? {});
+    feedbackVersionRef.current += 1;
+    await saveFeedback();
+  };
+
+  const handleInlineFeedbackChange = (recipeId: string, memberId: string, value: number) => {
+    const recipe = recipesById.get(recipeId);
+    if (!recipe) return;
+    const nextFeedback = { ...(recipe.family_feedback ?? {}), [memberId]: value };
+    updateFeedbackCaches(recipeId, nextFeedback);
+    if (activeRecipe?.recipe_id === recipeId) {
+      const next = { ...activeRecipe, family_feedback: nextFeedback };
+      activeRecipeRef.current = next;
+      setActiveRecipe(next);
+    }
+    scheduleFeedbackSave(recipeId, nextFeedback);
+  };
 
   return (
     <div className="space-y-6">
@@ -610,6 +726,13 @@ export default function WeeklyPlanPage() {
                       const recipeMeta = entry?.recipe_id ? recipesById.get(entry.recipe_id) : null;
                       const thumbnail = recipeMeta?.thumbnail_url;
                       const displayName = recipeMeta?.name ?? entry?.name;
+                      const feedbackSource =
+                        recipeMeta?.recipe_id && recipeMeta.recipe_id === activeRecipeId && activeRecipe
+                          ? activeRecipe.family_feedback
+                          : recipeMeta?.family_feedback;
+                      const feedbackSummary = feedbackSource ? getFeedbackSummary(feedbackSource) : null;
+                      const isFeedbackOpen =
+                        feedbackTarget?.date === day.date && feedbackTarget.meal === meal;
                       const isSelected =
                         !!entry?.recipe_id &&
                         entry.recipe_id === activeRecipeId &&
@@ -674,6 +797,27 @@ export default function WeeklyPlanPage() {
                                   Add a recipe
                                 </button>
                               )}
+                              <div className="mt-1 flex flex-wrap items-center gap-2">
+                                {feedbackSummary && feedbackSummary.total > 0 ? (
+                                  <p className="text-[10px] text-amber-600">
+                                    👍 {feedbackSummary.up} · 👎 {feedbackSummary.down}
+                                  </p>
+                                ) : null}
+                                {entry?.recipe_id ? (
+                                  <button
+                                    className="text-[10px] text-rose-600 hover:text-rose-700"
+                                    onClick={() =>
+                                      setFeedbackTarget((prev) =>
+                                        prev && prev.date === day.date && prev.meal === meal
+                                          ? null
+                                          : { date: day.date, meal },
+                                      )
+                                    }
+                                  >
+                                    {isFeedbackOpen ? "Hide feedback" : "Rate"}
+                                  </button>
+                                ) : null}
+                              </div>
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
@@ -723,6 +867,18 @@ export default function WeeklyPlanPage() {
                               </button>
                             )}
                           </div>
+                          {isFeedbackOpen && entry?.recipe_id && recipeMeta ? (
+                            <div className="mt-3 w-full rounded-2xl border border-rose-100 bg-rose-50/60 px-4 py-3 text-xs text-slate-700">
+                              <FamilyFeedback
+                                members={members}
+                                feedback={recipeMeta.family_feedback}
+                                onChange={(memberId, value) =>
+                                  handleInlineFeedbackChange(entry.recipe_id as string, memberId, value)
+                                }
+                                compact
+                              />
+                            </div>
+                          ) : null}
                         </div>
                       );
                     })}
@@ -1069,6 +1225,20 @@ export default function WeeklyPlanPage() {
                   </li>
                 ))}
               </ul>
+            </div>
+            <div>
+              <div className="flex items-center gap-2 border-b border-dashed border-slate-200 pb-2">
+                <Heart className="h-4 w-4 text-slate-400" />
+                <h4 className="text-sm font-semibold text-slate-900">Family feedback</h4>
+              </div>
+              <div className="mt-2">
+                <FamilyFeedback
+                  members={members}
+                  feedback={activeRecipe.family_feedback}
+                  onChange={handleFeedbackChange}
+                  compact
+                />
+              </div>
             </div>
           </div>
         </div>

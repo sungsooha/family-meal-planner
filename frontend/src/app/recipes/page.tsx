@@ -6,6 +6,7 @@ import type { ChangeEvent } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSWRConfig } from "swr";
 import { useRecipes } from "@/lib/useRecipes";
+import { getFeedbackSummary } from "@/lib/feedback";
 import { BLUR_DATA_URL } from "@/lib/image";
 import { Filter, Upload, X, Shuffle } from "lucide-react";
 import ActionMenu from "@/components/ActionMenu";
@@ -20,6 +21,7 @@ type Recipe = {
   thumbnail_url?: string | null;
   notes?: string;
   family_feedback_score?: number;
+  family_feedback?: Record<string, number>;
   ingredients?: Ingredient[];
   ingredients_original?: Ingredient[];
   instructions?: string[];
@@ -211,14 +213,19 @@ export default function RecipesPage() {
                     <div className="h-16 w-16 rounded-xl bg-slate-100" />
                   )}
                   <div className="flex-1">
-                    <p className="text-xs uppercase tracking-wide text-slate-400">
-                      {(recipe.meal_types ?? []).join(", ") || "Flexible"}
-                    </p>
+                    <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-wide text-slate-400">
+                      <span>{(recipe.meal_types ?? []).join(", ") || "Flexible"}</span>
+                      {recipe.family_feedback && Object.keys(recipe.family_feedback).length > 0 && (() => {
+                        const summary = getFeedbackSummary(recipe.family_feedback);
+                        if (!summary.total) return null;
+                        return (
+                          <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] text-amber-700">
+                            👍 {summary.up} · 👎 {summary.down}
+                          </span>
+                        );
+                      })()}
+                    </div>
                     <h3 className="mt-2 text-sm font-semibold text-slate-900">{recipe.name}</h3>
-                    <p className="mt-1 text-xs text-slate-600">Serves {recipe.servings ?? "?"}</p>
-                    {typeof recipe.family_feedback_score === "number" && (
-                      <p className="mt-1 text-xs text-amber-600">Family score: {recipe.family_feedback_score}/5</p>
-                    )}
                   </div>
                 </div>
               </Link>

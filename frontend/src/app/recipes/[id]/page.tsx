@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
-import useSWR from "swr";
+import { useEffect, useMemo, useRef, useState } from "react";
+import useSWR, { useSWRConfig } from "swr";
 import { useRecipes } from "@/lib/useRecipes";
+import FamilyFeedback from "@/components/FamilyFeedback";
 import { ArrowLeft, ListChecks, ShoppingBasket } from "lucide-react";
 import { useLanguage } from "@/components/LanguageProvider";
 import { useToast } from "@/components/ToastProvider";
@@ -18,10 +19,20 @@ type Recipe = {
   source_url?: string | null;
   notes?: string;
   family_feedback_score?: number;
+  family_feedback?: Record<string, number>;
   ingredients?: Ingredient[];
   ingredients_original?: Ingredient[];
   instructions?: string[];
   instructions_original?: string[];
+};
+
+type FamilyMember = {
+  id: string;
+  label: string;
+};
+
+type AppConfig = {
+  family_members?: FamilyMember[];
 };
 
 export default function RecipeDetailPage() {
@@ -33,10 +44,15 @@ export default function RecipeDetailPage() {
     idParam ? `/api/recipes/${idParam}` : null,
     { fallbackData: fallbackRecipe },
   );
+  const { mutate } = useSWRConfig();
+  const { data: configData } = useSWR<{ config: AppConfig }>("/api/config");
   const { language } = useLanguage();
   const { showToast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState<Recipe | null>(null);
+  const recipeRef = useRef<Recipe | null>(null);
+  const feedbackVersionRef = useRef(0);
+  const feedbackSavingRef = useRef(false);
 
   useEffect(() => {
     if (recipe) {
@@ -44,8 +60,13 @@ export default function RecipeDetailPage() {
     }
   }, [recipe]);
 
+  useEffect(() => {
+    recipeRef.current = recipe ?? null;
+  }, [recipe]);
+
   const ingredients = language === "original" ? recipe?.ingredients_original : recipe?.ingredients;
   const instructions = language === "original" ? recipe?.instructions_original : recipe?.instructions;
+  const members = configData?.config.family_members ?? [];
 
   const formatIngredients = (items?: Ingredient[]) =>
     (items ?? [])
@@ -86,6 +107,62 @@ export default function RecipeDetailPage() {
     setIsEditing(false);
     showToast("Saved. Weekly plan and shopping list refreshed.");
     await mutateRecipe();
+  };
+
+  const saveFeedback = async () => {
+    if (feedbackSavingRef.current) return;
+    feedbackSavingRef.current = true;
+    const version = feedbackVersionRef.current;
+    const snapshot = recipeRef.current;
+    if (!snapshot || !idParam) {
+      feedbackSavingRef.current = false;
+      return;
+    }
+    const response = await fetch(`/api/recipes/${idParam}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(snapshot),
+    });
+    feedbackSavingRef.current = false;
+    if (!response.ok) {
+      showToast("Unable to save feedback.");
+      await mutateRecipe();
+      return;
+    }
+    showToast("Feedback saved.");
+    await mutateRecipe();
+    if (feedbackVersionRef.current !== version) {
+      await saveFeedback();
+    }
+  };
+
+  const handleFeedbackChange = async (memberId: string, value: number) => {
+    if (!recipe || !idParam) return;
+    const baseRecipe = recipeRef.current ?? recipe;
+    const next = {
+      ...baseRecipe,
+      family_feedback: { ...(baseRecipe.family_feedback ?? {}), [memberId]: value },
+    };
+    recipeRef.current = next;
+    mutateRecipe(next, { revalidate: false });
+    mutate(
+      "/api/recipes?view=summary",
+      (current?: Recipe[]) =>
+        current?.map((item) =>
+          item.recipe_id === idParam ? { ...item, family_feedback: next.family_feedback } : item,
+        ),
+      { revalidate: false },
+    );
+    mutate(
+      "/api/recipes",
+      (current?: Recipe[]) =>
+        current?.map((item) =>
+          item.recipe_id === idParam ? { ...item, family_feedback: next.family_feedback } : item,
+        ),
+      { revalidate: false },
+    );
+    feedbackVersionRef.current += 1;
+    await saveFeedback();
   };
 
   const youtubeId = useMemo(() => {
@@ -201,11 +278,13 @@ export default function RecipeDetailPage() {
         <div className="rounded-3xl border border-white/70 bg-white/80 p-6 shadow-sm transition hover:shadow-lg hover:ring-2 hover:ring-emerald-200/70">
           <h3 className="text-sm font-semibold text-slate-900">Family feedback</h3>
           <p className="mt-2 text-xs text-rose-500">How did the family like it?</p>
-          <p className="mt-1 text-sm text-slate-600">
-            {typeof recipe.family_feedback_score === "number"
-              ? `${recipe.family_feedback_score} / 5`
-              : "Not rated yet."}
-          </p>
+          <div className="mt-3">
+            <FamilyFeedback
+              members={members}
+              feedback={recipe.family_feedback}
+              onChange={handleFeedbackChange}
+            />
+          </div>
         </div>
       </section>
 
@@ -248,17 +327,6 @@ export default function RecipeDetailPage() {
                     setDraft({ ...draft, servings: Number(event.target.value) || undefined })
                   }
                 />
-                <label className="text-xs uppercase tracking-wide text-slate-400">Family feedback (0-5)</label>
-                <input
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
-                  value={draft.family_feedback_score ?? ""}
-                  onChange={(event) =>
-                    setDraft({
-                      ...draft,
-                      family_feedback_score: Number(event.target.value) || undefined,
-                    })
-                  }
-                />
                 <label className="text-xs uppercase tracking-wide text-slate-400">Source URL</label>
                 <input
                   className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
@@ -271,6 +339,20 @@ export default function RecipeDetailPage() {
                   value={draft.notes ?? ""}
                   onChange={(event) => setDraft({ ...draft, notes: event.target.value })}
                 />
+                <label className="text-xs uppercase tracking-wide text-slate-400">Family feedback</label>
+                <div className="rounded-2xl border border-slate-200 bg-white px-3 py-2">
+                  <FamilyFeedback
+                    members={members}
+                    feedback={draft.family_feedback}
+                    onChange={(memberId, value) =>
+                      setDraft({
+                        ...draft,
+                        family_feedback: { ...(draft.family_feedback ?? {}), [memberId]: value },
+                      })
+                    }
+                    compact
+                  />
+                </div>
               </div>
               <div className="space-y-3">
                 <label className="text-xs uppercase tracking-wide text-slate-400">Ingredients (en)</label>

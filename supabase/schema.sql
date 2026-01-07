@@ -9,6 +9,7 @@ create table if not exists recipes (
   thumbnail_url text,
   notes text,
   family_feedback_score numeric,
+  family_feedback jsonb,
   ingredients jsonb,
   ingredients_original jsonb,
   instructions jsonb,

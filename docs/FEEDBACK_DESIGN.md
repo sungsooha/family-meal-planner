@@ -48,7 +48,9 @@ Each row shows:
 
 ## API / Persistence
 Reuse existing `PUT /api/recipes/[id]` to update:
-- `family_feedback` field
+- `family_feedback` field on each recipe
+
+Supabase: `recipes.family_feedback` (jsonb)
 
 ## Future Extensions
 - Optional history (date-based feedback).
