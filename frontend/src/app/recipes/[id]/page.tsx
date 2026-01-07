@@ -50,6 +50,7 @@ export default function RecipeDetailPage() {
   const { showToast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState<Recipe | null>(null);
+  const [mealTypesInput, setMealTypesInput] = useState("");
   const recipeRef = useRef<Recipe | null>(null);
   const feedbackVersionRef = useRef(0);
   const feedbackSavingRef = useRef(false);
@@ -57,6 +58,7 @@ export default function RecipeDetailPage() {
   useEffect(() => {
     if (recipe) {
       setDraft({ ...recipe });
+      setMealTypesInput((recipe.meal_types ?? []).join(", "));
     }
   }, [recipe]);
 
@@ -96,12 +98,19 @@ export default function RecipeDetailPage() {
       .filter(Boolean);
   };
 
+  const parseMealTypes = (value: string) =>
+    value
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean);
+
   const handleSave = async () => {
     if (!draft || !idParam) return;
+    const payload = { ...draft, meal_types: parseMealTypes(mealTypesInput) };
     const response = await fetch(`/api/recipes/${idParam}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(draft),
+      body: JSON.stringify(payload),
     });
     if (!response.ok) return;
     setIsEditing(false);
@@ -290,7 +299,7 @@ export default function RecipeDetailPage() {
 
       {isEditing && draft && (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/40 p-4">
-          <div className="w-full max-w-4xl rounded-3xl bg-white p-6 shadow-2xl">
+          <div className="max-h-[85vh] w-full max-w-4xl overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold text-slate-900">Edit recipe</h3>
               <button className="text-sm text-slate-500" onClick={() => setIsEditing(false)}>
@@ -308,16 +317,8 @@ export default function RecipeDetailPage() {
                 <label className="text-xs uppercase tracking-wide text-slate-400">Meal types (comma-separated)</label>
                 <input
                   className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
-                  value={(draft.meal_types ?? []).join(", ")}
-                  onChange={(event) =>
-                    setDraft({
-                      ...draft,
-                      meal_types: event.target.value
-                        .split(",")
-                        .map((item) => item.trim())
-                        .filter(Boolean),
-                    })
-                  }
+                  value={mealTypesInput}
+                  onChange={(event) => setMealTypesInput(event.target.value)}
                 />
                 <label className="text-xs uppercase tracking-wide text-slate-400">Servings</label>
                 <input
