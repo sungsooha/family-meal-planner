@@ -94,6 +94,16 @@ export default function Header() {
         >
           Shopping
         </Link>
+        <Link
+          className={`rounded-full border px-2.5 py-1 text-[11px] shadow-sm hover:text-slate-900 ${
+            pathname?.startsWith("/settings")
+              ? "border-emerald-200 bg-emerald-100 text-emerald-900"
+              : "border-slate-200 bg-white/80 text-slate-600"
+          }`}
+          href="/settings"
+        >
+          Settings
+        </Link>
         <button
           className="rounded-full border border-slate-200 bg-white/80 px-2.5 py-1 text-[11px] shadow-sm hover:text-slate-900"
           onClick={async () => {

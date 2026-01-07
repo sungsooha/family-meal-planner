@@ -75,6 +75,30 @@ const RECIPE_SOURCES_DIR = path.join(DATA_DIR, "recipe_sources");
 const DAILY_PLANS_DIR = path.join(DATA_DIR, "daily_plans");
 const BUY_LISTS_DIR = path.join(DATA_DIR, "buy_lists");
 const CONFIG_FILE = path.join(DATA_DIR, "config.json");
+
+export type FamilyMember = {
+  id: string;
+  label: string;
+};
+
+export type AppConfig = {
+  allow_repeats_if_needed?: boolean;
+  family_size?: number;
+  max_repeat_per_week?: number;
+  family_members?: FamilyMember[];
+};
+
+const DEFAULT_CONFIG: AppConfig = {
+  allow_repeats_if_needed: true,
+  family_size: 4,
+  max_repeat_per_week: 2,
+  family_members: [
+    { id: "dad", label: "Dad" },
+    { id: "mom", label: "Mom" },
+    { id: "daughter_5", label: "Daughter (5)" },
+    { id: "daughter_2", label: "Daughter (2)" },
+  ],
+};
 const SHOPPING_FILE = path.join(DATA_DIR, "shopping_list.json");
 
 async function readJson<T>(filePath: string, fallback: T): Promise<T> {
@@ -449,14 +473,28 @@ export async function deleteBuyList(id: string): Promise<boolean> {
   }
 }
 
-export async function getConfig(): Promise<{ family_size?: number; max_repeat_per_week?: number }> {
+export async function getConfig(): Promise<AppConfig> {
   if (isSupabaseEnabled()) {
     const admin = getSupabaseAdmin();
     const { data } = await admin.from("config").select("value").eq("key", "default").maybeSingle();
-    if (data?.value) return data.value;
-    return { family_size: 4, max_repeat_per_week: 2 };
+    if (data?.value) return { ...DEFAULT_CONFIG, ...data.value };
+    return DEFAULT_CONFIG;
   }
-  return readJson(CONFIG_FILE, { family_size: 4, max_repeat_per_week: 2 });
+  const local = await readJson(CONFIG_FILE, DEFAULT_CONFIG);
+  return { ...DEFAULT_CONFIG, ...local };
+}
+
+export async function saveConfig(config: AppConfig): Promise<void> {
+  const payload = { ...DEFAULT_CONFIG, ...config };
+  if (isSupabaseEnabled()) {
+    const admin = getSupabaseAdmin();
+    await admin.from("config").upsert({
+      key: "default",
+      value: payload,
+    });
+    return;
+  }
+  await writeJson(CONFIG_FILE, payload);
 }
 
 export async function getShoppingState(): Promise<Record<string, ShoppingStateItem>> {
