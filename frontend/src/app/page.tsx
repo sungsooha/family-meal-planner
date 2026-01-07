@@ -76,6 +76,11 @@ const MEAL_BADGES: Record<string, string> = {
   lunch: "bg-sky-100 text-sky-800",
   dinner: "bg-emerald-100 text-emerald-800",
 };
+const MEAL_SHORT: Record<string, string> = {
+  breakfast: "B",
+  lunch: "L",
+  dinner: "D",
+};
 
 async function postJson<T>(url: string, payload: unknown): Promise<T> {
   const response = await fetch(url, {
@@ -238,6 +243,20 @@ export default function WeeklyPlanPage() {
   useEffect(() => {
     activeRecipeRef.current = activeRecipe;
   }, [activeRecipe]);
+
+  useEffect(() => {
+    if (!feedbackTarget) return;
+    const handleClick = (event: MouseEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (!target) return;
+      if (target.closest('[data-feedback-trigger="true"], [data-feedback-panel="true"]')) return;
+      setFeedbackTarget(null);
+    };
+    document.addEventListener("click", handleClick);
+    return () => {
+      document.removeEventListener("click", handleClick);
+    };
+  }, [feedbackTarget]);
 
   const updateFeedbackCaches = (recipeId: string, feedback: Record<string, number>) => {
     mutate(
@@ -746,28 +765,31 @@ export default function WeeklyPlanPage() {
                           }`}
                         >
                           <div className="flex items-center gap-3">
-                            {thumbnail ? (
-                              <Image
-                                src={thumbnail}
-                                alt=""
-                                width={40}
-                                height={40}
-                                className="h-10 w-10 rounded-full object-cover"
-                                sizes="40px"
-                                placeholder="blur"
-                                blurDataURL={BLUR_DATA_URL}
-                              />
-                            ) : (
-                              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-slate-600 shadow-sm">
-                                <Utensils className="h-4 w-4" />
-                              </div>
-                            )}
-                            <div>
+                            <div className="relative">
+                              {thumbnail ? (
+                                <Image
+                                  src={thumbnail}
+                                  alt=""
+                                  width={40}
+                                  height={40}
+                                  className="h-10 w-10 rounded-full object-cover"
+                                  sizes="40px"
+                                  placeholder="blur"
+                                  blurDataURL={BLUR_DATA_URL}
+                                />
+                              ) : (
+                                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-slate-600 shadow-sm">
+                                  <Utensils className="h-4 w-4" />
+                                </div>
+                              )}
                               <span
-                                className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${MEAL_BADGES[meal]}`}
+                                className={`absolute -left-1 -top-1 flex h-4.5 w-4.5 items-center justify-center rounded-full border border-white text-[9px] font-semibold shadow-sm ${MEAL_BADGES[meal]}`}
+                                title={MEAL_LABELS[meal]}
                               >
-                                {MEAL_LABELS[meal]}
+                                {MEAL_SHORT[meal]}
                               </span>
+                            </div>
+                            <div>
                               {displayName ? (
                                 <button
                                   className={`text-left text-xs font-medium hover:text-slate-700 ${
@@ -797,30 +819,34 @@ export default function WeeklyPlanPage() {
                                   Add a recipe
                                 </button>
                               )}
-                              <div className="mt-1 flex flex-wrap items-center gap-2">
-                                {feedbackSummary && feedbackSummary.total > 0 ? (
-                                  <p className="text-[10px] text-amber-600">
-                                    👍 {feedbackSummary.up} · 👎 {feedbackSummary.down}
-                                  </p>
-                                ) : null}
-                                {entry?.recipe_id ? (
-                                  <button
-                                    className="text-[10px] text-rose-600 hover:text-rose-700"
-                                    onClick={() =>
-                                      setFeedbackTarget((prev) =>
-                                        prev && prev.date === day.date && prev.meal === meal
-                                          ? null
-                                          : { date: day.date, meal },
-                                      )
-                                    }
-                                  >
-                                    {isFeedbackOpen ? "Hide feedback" : "Rate"}
-                                  </button>
-                                ) : null}
-                              </div>
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
+                            {entry?.recipe_id ? (
+                              <button
+                                className={`rounded-full border px-2 py-1 text-[10px] ${
+                                  feedbackSummary && feedbackSummary.total > 0
+                                    ? "border-amber-200 bg-amber-50 text-amber-700"
+                                    : "border-slate-200 bg-white text-slate-400"
+                                }`}
+                                onClick={() =>
+                                  setFeedbackTarget((prev) =>
+                                    prev && prev.date === day.date && prev.meal === meal
+                                      ? null
+                                      : { date: day.date, meal },
+                                  )
+                                }
+                                data-feedback-trigger="true"
+                              >
+                                {feedbackSummary && feedbackSummary.total > 0 ? (
+                                  <>
+                                    👍 {feedbackSummary.up} · 👎 {feedbackSummary.down}
+                                  </>
+                                ) : (
+                                  <>👍 0 · 👎 0</>
+                                )}
+                              </button>
+                            ) : null}
                             {displayName ? (
                               <button
                                 className={`rounded-full border px-3 py-1 text-xs ${
@@ -831,7 +857,7 @@ export default function WeeklyPlanPage() {
                                 onClick={() => handleToggleComplete(day.date, meal)}
                               >
                                 <Heart className="mr-1 inline h-3 w-3" />
-                                {entry?.completed ? "Done" : "Mark done"}
+                                {entry?.completed ? "Done" : "Done"}
                               </button>
                             ) : null}
                             {entry ? (
@@ -868,7 +894,10 @@ export default function WeeklyPlanPage() {
                             )}
                           </div>
                           {isFeedbackOpen && entry?.recipe_id && recipeMeta ? (
-                            <div className="mt-3 w-full rounded-2xl border border-rose-100 bg-rose-50/60 px-4 py-3 text-xs text-slate-700">
+                            <div
+                              className="mt-3 w-full rounded-2xl border border-rose-100 bg-rose-50/60 px-4 py-3 text-xs text-slate-700"
+                              data-feedback-panel="true"
+                            >
                               <FamilyFeedback
                                 members={members}
                                 feedback={recipeMeta.family_feedback}

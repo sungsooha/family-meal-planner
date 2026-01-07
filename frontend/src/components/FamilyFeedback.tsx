@@ -1,6 +1,6 @@
 "use client";
 
-import { Minus, ThumbsDown, ThumbsUp } from "lucide-react";
+import { ThumbsDown, ThumbsUp } from "lucide-react";
 import type { FamilyFeedback } from "@/lib/feedback";
 
 type FamilyMember = {
@@ -16,7 +16,6 @@ type Option = {
 
 const OPTIONS: Option[] = [
   { value: -1, label: "Thumbs down", Icon: ThumbsDown },
-  { value: 0, label: "Neutral", Icon: Minus },
   { value: 1, label: "Thumbs up", Icon: ThumbsUp },
 ];
 
@@ -50,7 +49,7 @@ export default function FamilyFeedback({ members, feedback, onChange, compact = 
                         ? "border-rose-200 bg-rose-50 text-rose-700"
                         : "border-slate-200 bg-white text-slate-500 hover:border-slate-300"
                     } ${compact ? "text-[10px]" : ""}`}
-                    onClick={() => onChange?.(member.id, optionValue)}
+                    onClick={() => onChange?.(member.id, isActive ? 0 : optionValue)}
                     aria-label={`${member.label}: ${label}`}
                     type="button"
                   >
