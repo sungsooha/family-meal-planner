@@ -457,6 +457,12 @@ export default function WeeklyPlanPage() {
       month: "short",
       day: "numeric",
     });
+  const dayTileLabel = (isoDate: string) =>
+    new Date(`${isoDate}T00:00:00`).toLocaleDateString("en-US", {
+      weekday: "short",
+      month: "numeric",
+      day: "numeric",
+    });
 
   const buildCalendar = (month: Date) => {
     const year = month.getFullYear();
@@ -704,285 +710,243 @@ export default function WeeklyPlanPage() {
           ))}
         </section>
       ) : (
-        <section className="grid gap-4 lg:grid-cols-2">
-          {plan?.days
-            .filter((day) => !collapsedDays[day.date])
-            .map((day) => {
-              const missing = Object.values(day.meals).filter((meal) => !meal).length;
-              const plannedCount = Object.values(day.meals).filter((meal) => meal).length;
-              const completedCount = Object.values(day.meals).filter((meal) => meal?.completed).length;
-              const isToday = day.date === formatLocalDate(new Date());
-              const weekday = new Date(`${day.date}T00:00:00`).getDay();
-              const isWeekend = weekday === 0 || weekday === 6;
-              return (
-                <div
-                  key={day.date}
-                  className={`rounded-3xl border border-white/70 p-4 shadow-sm transition hover:-translate-y-1 hover:shadow-lg hover:ring-2 hover:ring-emerald-200/70 ${
-                    isToday ? "ring-2 ring-emerald-200/80" : ""
-                  } ${isWeekend ? "bg-rose-50/80" : "bg-white/80"}`}
-                >
-                  <div className="flex items-center justify-between border-b border-dashed border-slate-200 pb-3">
-                    <div>
-                      <p className="text-sm font-semibold text-slate-900">{dayName(day.date)}</p>
-                      <p className="text-xs text-slate-600">
-                        Planned {plannedCount}/3 · Done {completedCount}/3 · {missing} missing
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs text-slate-500"
-                        onClick={() =>
-                          setCollapsedDays((prev) => ({ ...prev, [day.date]: !prev[day.date] }))
-                        }
-                      >
-                        Collapse
-                      </button>
-                    </div>
-                  </div>
-                  <div className="space-y-3">
-                    {mealTypeOptions.map((meal) => {
-                      const entry = day.meals[meal];
-                      const recipeMeta = entry?.recipe_id ? recipesById.get(entry.recipe_id) : null;
-                      const thumbnail = recipeMeta?.thumbnail_url;
-                      const displayName = recipeMeta?.name ?? entry?.name;
-                      const feedbackSource =
-                        recipeMeta?.recipe_id && recipeMeta.recipe_id === activeRecipeId && activeRecipe
-                          ? activeRecipe.family_feedback
-                          : recipeMeta?.family_feedback;
-                      const feedbackSummary = feedbackSource ? getFeedbackSummary(feedbackSource) : null;
-                      const isFeedbackOpen =
-                        feedbackTarget?.date === day.date && feedbackTarget.meal === meal;
-                      const isSelected =
-                        !!entry?.recipe_id &&
-                        entry.recipe_id === activeRecipeId &&
-                        activeMealContext?.date === day.date &&
-                        activeMealContext?.meal === meal;
-                      return (
-                        <div
-                          key={meal}
-                          className={`flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-slate-50/80 px-4 py-3 transition hover:border-slate-200 hover:bg-white hover:shadow-md hover:ring-1 hover:ring-emerald-200/70 ${
-                            isSelected ? "border-rose-300 bg-rose-100/70 shadow-sm ring-2 ring-rose-200/70" : ""
-                          }`}
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className="relative">
-                              {thumbnail ? (
-                                <Image
-                                  src={thumbnail}
-                                  alt=""
-                                  width={40}
-                                  height={40}
-                                  className="h-10 w-10 rounded-full object-cover"
-                                  sizes="40px"
-                                  placeholder="blur"
-                                  blurDataURL={BLUR_DATA_URL}
-                                />
-                              ) : (
-                                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-slate-600 shadow-sm">
-                                  <Utensils className="h-4 w-4" />
-                                </div>
-                              )}
-                              <span
-                                className={`absolute -left-1 -top-1 flex h-4.5 w-4.5 items-center justify-center rounded-full border border-white text-[9px] font-semibold shadow-sm ${MEAL_BADGES[meal]}`}
-                                title={MEAL_LABELS[meal]}
-                              >
-                                {MEAL_SHORT[meal]}
-                              </span>
-                            </div>
-                            <div>
-                              {displayName ? (
-                                <button
-                                  className={`text-left text-xs font-medium hover:text-slate-700 ${
-                                    entry?.completed
-                                      ? "text-slate-400 line-through"
-                                      : isSelected
-                                        ? "text-rose-700"
-                                        : "text-slate-900"
-                                  }`}
-                                  onClick={() => {
-                                    setActiveRecipeId(entry?.recipe_id ?? null);
-                                    setActiveMealContext({ date: day.date, meal });
-                                  }}
-                                  onMouseEnter={() => {
-                                    if (entry?.recipe_id) {
-                                      prefetchRecipe(entry.recipe_id);
-                                    }
-                                  }}
-                                >
-                                  {displayName}
-                                </button>
-                              ) : (
-                                <button
-                                  className="text-left text-xs font-medium text-slate-400 hover:text-slate-500"
-                                  onClick={() => setSelectMeal({ date: day.date, meal })}
-                                >
-                                  Add a recipe
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {entry?.recipe_id ? (
-                              <button
-                                className={`rounded-full border px-2 py-1 text-[10px] ${
-                                  feedbackSummary && feedbackSummary.total > 0
-                                    ? "border-amber-200 bg-amber-50 text-amber-700"
-                                    : "border-slate-200 bg-white text-slate-400"
-                                }`}
-                                onClick={() =>
-                                  setFeedbackTarget((prev) =>
-                                    prev && prev.date === day.date && prev.meal === meal
-                                      ? null
-                                      : { date: day.date, meal },
-                                  )
-                                }
-                                data-feedback-trigger="true"
-                              >
-                                {feedbackSummary && feedbackSummary.total > 0 ? (
-                                  <>
-                                    👍 {feedbackSummary.up} · 👎 {feedbackSummary.down}
-                                  </>
-                                ) : (
-                                  <>👍 0 · 👎 0</>
-                                )}
-                              </button>
-                            ) : null}
-                            {displayName ? (
-                              <button
-                                className={`rounded-full border px-3 py-1 text-xs ${
-                                  entry?.completed
-                                    ? "border-rose-200 bg-rose-50 text-rose-700"
-                                    : "border-slate-200 bg-white text-slate-500"
-                                }`}
-                                onClick={() => handleToggleComplete(day.date, meal)}
-                              >
-                                <Heart className="mr-1 inline h-3 w-3" />
-                                {entry?.completed ? "Done" : "Done"}
-                              </button>
-                            ) : null}
-                            {entry ? (
-                              <button
-                                className={`rounded-full border px-3 py-1 text-xs ${
-                                  entry.locked
-                                    ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                                    : "border-slate-200 bg-white text-slate-500"
-                                }`}
-                                onClick={() => handleToggleLock(day.date, meal)}
-                                aria-label={entry.locked ? "Unlock" : "Lock"}
-                                title={entry.locked ? "Unlock" : "Lock"}
-                              >
-                                {entry.locked ? <Lock className="h-3 w-3" /> : <LockOpen className="h-3 w-3" />}
-                              </button>
-                            ) : null}
-                            {displayName && !entry?.locked ? (
-                              <button
-                                className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs text-slate-500"
-                                onClick={() => handleClear(day.date, meal)}
-                              >
-                                Clear
-                              </button>
-                            ) : null}
-                            {entry?.locked ? null : (
-                              <button
-                                className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs text-slate-500"
-                                onClick={() => setAddMenu({ date: day.date, meal })}
-                                aria-label="Add recipe"
-                                title="Add recipe"
-                              >
-                                <Plus className="h-3 w-3" />
-                              </button>
-                            )}
-                          </div>
-                          {isFeedbackOpen && entry?.recipe_id && recipeMeta ? (
-                            <div
-                              className="mt-3 w-full rounded-2xl border border-rose-100 bg-rose-50/60 px-4 py-3 text-xs text-slate-700"
-                              data-feedback-panel="true"
-                            >
-                              <FamilyFeedback
-                                members={members}
-                                feedback={recipeMeta.family_feedback}
-                                onChange={(memberId, value) =>
-                                  handleInlineFeedbackChange(entry.recipe_id as string, memberId, value)
-                                }
-                                compact
-                              />
-                            </div>
-                          ) : null}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
-        </section>
-      )}
-
-      {plan?.days.some((day) => collapsedDays[day.date]) && (
-        <section className="space-y-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Past days</p>
-              <h3 className="text-lg font-semibold text-slate-900">Collapsed summaries</h3>
-            </div>
-          </div>
-          <div className="grid gap-3">
-            {plan.days
-              .filter((day) => collapsedDays[day.date])
+        <>
+          {plan?.days.some((day) => collapsedDays[day.date]) && (
+            <section className="flex flex-wrap gap-2">
+              {plan.days
+                .filter((day) => collapsedDays[day.date])
+                .map((day) => {
+                  const isToday = day.date === formatLocalDate(new Date());
+                  return (
+                    <button
+                      key={day.date}
+                      className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${
+                        isToday
+                          ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                          : "border-slate-200 bg-slate-100 text-slate-500"
+                      } hover:border-emerald-200 hover:bg-white hover:shadow-sm`}
+                      onClick={() =>
+                        setCollapsedDays((prev) => ({ ...prev, [day.date]: !prev[day.date] }))
+                      }
+                    >
+                      {dayTileLabel(day.date)}
+                    </button>
+                  );
+                })}
+            </section>
+          )}
+          <section className="grid gap-4 lg:grid-cols-2">
+            {plan?.days
+              .filter((day) => !collapsedDays[day.date])
               .map((day) => {
-                const missing = Object.values(day.meals).filter((meal) => !meal).length;
-                const mealSummary = mealTypeOptions.map((meal) => {
-                  const mealValue = day.meals[meal];
-                  const recipeMeta = mealValue?.recipe_id ? recipesById.get(mealValue.recipe_id) : null;
-                  return {
-                    meal,
-                    label: MEAL_LABELS[meal],
-                    name: recipeMeta?.name ?? mealValue?.name ?? "Not set",
-                    missing: !mealValue,
-                    completed: Boolean(mealValue?.completed),
-                  };
-                });
+                const plannedCount = Object.values(day.meals).filter((meal) => meal).length;
+                const completedCount = Object.values(day.meals).filter((meal) => meal?.completed).length;
+                const isToday = day.date === formatLocalDate(new Date());
+                const weekday = new Date(`${day.date}T00:00:00`).getDay();
+                const isWeekend = weekday === 0 || weekday === 6;
                 return (
                   <div
                     key={day.date}
-                    className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-500 transition hover:shadow-md hover:ring-1 hover:ring-emerald-200/70"
+                    className={`rounded-3xl border border-white/70 p-4 shadow-sm transition hover:-translate-y-1 hover:shadow-lg hover:ring-2 hover:ring-emerald-200/70 ${
+                      isToday ? "ring-2 ring-emerald-200/80" : ""
+                    } ${isWeekend ? "bg-rose-50/80" : "bg-white/80"}`}
                   >
-                    <div className="flex items-center justify-between border-b border-dashed border-slate-200 pb-2">
+                    <div className="flex items-center justify-between border-b border-dashed border-slate-200 pb-3">
                       <div>
                         <p className="text-sm font-semibold text-slate-900">{dayName(day.date)}</p>
-                      <p className="text-xs text-slate-600">{missing} missing</p>
+                        <p className="text-xs text-slate-600">
+                          Planned {plannedCount}/3 · Done {completedCount}/3
+                        </p>
                       </div>
-                      <button
-                        className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs text-slate-500"
-                        onClick={() =>
-                          setCollapsedDays((prev) => ({ ...prev, [day.date]: !prev[day.date] }))
-                        }
-                      >
-                        Expand
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs text-slate-500"
+                          onClick={() =>
+                            setCollapsedDays((prev) => ({ ...prev, [day.date]: !prev[day.date] }))
+                          }
+                        >
+                          Collapse
+                        </button>
+                      </div>
                     </div>
-                    <div className="grid gap-2 rounded-2xl border border-dashed border-slate-200 bg-white/70 px-3 py-3 text-xs text-slate-500">
-                      {mealSummary.map((item) => (
-                        <div key={item.meal} className="flex items-center justify-between">
-                          <span
-                            className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
-                              MEAL_BADGES[item.meal] ?? "bg-slate-100 text-slate-600"
+                    <div className="space-y-3">
+                      {mealTypeOptions.map((meal) => {
+                        const entry = day.meals[meal];
+                        const recipeMeta = entry?.recipe_id ? recipesById.get(entry.recipe_id) : null;
+                        const thumbnail = recipeMeta?.thumbnail_url;
+                        const displayName = recipeMeta?.name ?? entry?.name;
+                        const feedbackSource =
+                          recipeMeta?.recipe_id && recipeMeta.recipe_id === activeRecipeId && activeRecipe
+                            ? activeRecipe.family_feedback
+                            : recipeMeta?.family_feedback;
+                        const feedbackSummary = feedbackSource ? getFeedbackSummary(feedbackSource) : null;
+                        const isFeedbackOpen =
+                          feedbackTarget?.date === day.date && feedbackTarget.meal === meal;
+                        const isSelected =
+                          !!entry?.recipe_id &&
+                          entry.recipe_id === activeRecipeId &&
+                          activeMealContext?.date === day.date &&
+                          activeMealContext?.meal === meal;
+                        return (
+                          <div
+                            key={meal}
+                            className={`flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-slate-50/80 px-4 py-3 transition hover:border-slate-200 hover:bg-white hover:shadow-md hover:ring-1 hover:ring-emerald-200/70 ${
+                              isSelected ? "border-rose-300 bg-rose-100/70 shadow-sm ring-2 ring-rose-200/70" : ""
                             }`}
                           >
-                            {item.label}
-                          </span>
-                          <span className="flex items-center gap-2">
-                            {item.completed && <Heart className="h-3 w-3 text-rose-400" />}
-                            <span className={item.missing ? "text-rose-400" : "text-slate-600"}>{item.name}</span>
-                          </span>
-                        </div>
-                      ))}
+                            <div className="flex items-center gap-3">
+                              <div className="relative">
+                                {thumbnail ? (
+                                  <Image
+                                    src={thumbnail}
+                                    alt=""
+                                    width={40}
+                                    height={40}
+                                    className="h-10 w-10 rounded-full object-cover"
+                                    sizes="40px"
+                                    placeholder="blur"
+                                    blurDataURL={BLUR_DATA_URL}
+                                  />
+                                ) : (
+                                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-slate-600 shadow-sm">
+                                    <Utensils className="h-4 w-4" />
+                                  </div>
+                                )}
+                                <span
+                                  className={`absolute -left-1 -top-1 flex h-4.5 w-4.5 items-center justify-center rounded-full border border-white text-[9px] font-semibold shadow-sm ${MEAL_BADGES[meal]}`}
+                                  title={MEAL_LABELS[meal]}
+                                >
+                                  {MEAL_SHORT[meal]}
+                                </span>
+                              </div>
+                              <div>
+                                {displayName ? (
+                                  <button
+                                    className={`text-left text-xs font-medium hover:text-slate-700 ${
+                                      entry?.completed
+                                        ? "text-slate-400 line-through"
+                                        : isSelected
+                                          ? "text-rose-700"
+                                          : "text-slate-900"
+                                    }`}
+                                    onClick={() => {
+                                      setActiveRecipeId(entry?.recipe_id ?? null);
+                                      setActiveMealContext({ date: day.date, meal });
+                                    }}
+                                    onMouseEnter={() => {
+                                      if (entry?.recipe_id) {
+                                        prefetchRecipe(entry.recipe_id);
+                                      }
+                                    }}
+                                  >
+                                    {displayName}
+                                  </button>
+                                ) : (
+                                  <button
+                                    className="text-left text-xs font-medium text-slate-400 hover:text-slate-500"
+                                    onClick={() => setSelectMeal({ date: day.date, meal })}
+                                  >
+                                    Add a recipe
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {entry?.recipe_id ? (
+                                <button
+                                  className={`rounded-full border px-2 py-1 text-[10px] ${
+                                    feedbackSummary && feedbackSummary.total > 0
+                                      ? "border-amber-200 bg-amber-50 text-amber-700"
+                                      : "border-slate-200 bg-white text-slate-400"
+                                  }`}
+                                  onClick={() =>
+                                    setFeedbackTarget((prev) =>
+                                      prev && prev.date === day.date && prev.meal === meal
+                                        ? null
+                                        : { date: day.date, meal },
+                                    )
+                                  }
+                                  data-feedback-trigger="true"
+                                >
+                                  {feedbackSummary && feedbackSummary.total > 0 ? (
+                                    <>
+                                      👍 {feedbackSummary.up} · 👎 {feedbackSummary.down}
+                                    </>
+                                  ) : (
+                                    <>👍 0 · 👎 0</>
+                                  )}
+                                </button>
+                              ) : null}
+                              {displayName ? (
+                                <button
+                                  className={`rounded-full border px-3 py-1 text-xs ${
+                                    entry?.completed
+                                      ? "border-rose-200 bg-rose-50 text-rose-700"
+                                      : "border-slate-200 bg-white text-slate-500"
+                                  }`}
+                                  onClick={() => handleToggleComplete(day.date, meal)}
+                                >
+                                  <Heart className="mr-1 inline h-3 w-3" />
+                                  {entry?.completed ? "Done" : "Done"}
+                                </button>
+                              ) : null}
+                              {entry ? (
+                                <button
+                                  className={`rounded-full border px-3 py-1 text-xs ${
+                                    entry.locked
+                                      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                                      : "border-slate-200 bg-white text-slate-500"
+                                  }`}
+                                  onClick={() => handleToggleLock(day.date, meal)}
+                                  aria-label={entry.locked ? "Unlock" : "Lock"}
+                                  title={entry.locked ? "Unlock" : "Lock"}
+                                >
+                                  {entry.locked ? <Lock className="h-3 w-3" /> : <LockOpen className="h-3 w-3" />}
+                                </button>
+                              ) : null}
+                              {displayName && !entry?.locked ? (
+                                <button
+                                  className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs text-slate-500"
+                                  onClick={() => handleClear(day.date, meal)}
+                                >
+                                  Clear
+                                </button>
+                              ) : null}
+                              {entry?.locked ? null : (
+                                <button
+                                  className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs text-slate-500"
+                                  onClick={() => setAddMenu({ date: day.date, meal })}
+                                  aria-label="Add recipe"
+                                  title="Add recipe"
+                                >
+                                  <Plus className="h-3 w-3" />
+                                </button>
+                              )}
+                            </div>
+                            {isFeedbackOpen && entry?.recipe_id && recipeMeta ? (
+                              <div
+                                className="mt-3 w-full rounded-2xl border border-rose-100 bg-rose-50/60 px-4 py-3 text-xs text-slate-700"
+                                data-feedback-panel="true"
+                              >
+                                <FamilyFeedback
+                                  members={members}
+                                  feedback={recipeMeta.family_feedback}
+                                  onChange={(memberId, value) =>
+                                    handleInlineFeedbackChange(entry.recipe_id as string, memberId, value)
+                                  }
+                                  compact
+                                />
+                              </div>
+                            ) : null}
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 );
               })}
-          </div>
-        </section>
+          </section>
+        </>
       )}
 
       {selectMeal && (
