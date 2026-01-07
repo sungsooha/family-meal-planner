@@ -49,7 +49,7 @@
 ## Commit & Pull Request Guidelines
 - No git history is available in this workspace; use clear messages like `feat: ...`, `fix: ...`, `chore: ...`.
 - PRs should include: summary, manual test notes, and screenshots for UI updates.
-- If behavior changes, update `PROJECT.md` TODOs or requirements.
+- If behavior changes, update `docs/PROJECT.md` TODOs or requirements.
 
 ## Security & Configuration
 - Keep secrets in `.env` (not committed).

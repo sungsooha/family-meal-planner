@@ -67,7 +67,7 @@ ALLOWED_EMAILS=you@example.com,partner@example.com
 
 3. Start the app and sign in from `/login`.
 
-Detailed login setup: `LOGIN_SETUP.md`.
+Detailed login setup: `docs/LOGIN_SETUP.md`.
 
 ## Data Migration (Local JSON → Supabase)
 1. Configure `frontend/.env.local` (see above).
@@ -86,7 +86,7 @@ Schema reference: `supabase/schema.sql`.
 - App settings live in `data/config.json`.
 
 ## Deployment
-See `DEPLOYMENT_PLAN.md` for GitHub + Vercel + Supabase setup.
+See `docs/DEPLOYMENT_PLAN.md` for GitHub + Vercel + Supabase setup.
 
 ## Notes
 This repository contains personal family data. Keep it private.
