@@ -12,6 +12,7 @@ export type Ingredient = {
 export type Recipe = {
   recipe_id: string;
   name: string;
+  name_original?: string;
   meal_types?: string[];
   meal_type?: string;
   servings?: number;
@@ -599,6 +600,7 @@ function recipeFromRow(row: any): Recipe {
   return normalizeRecipe({
     recipe_id: row.recipe_id,
     name: row.name,
+    name_original: row.name_original ?? undefined,
     meal_types: row.meal_types ?? [],
     servings: row.servings ?? undefined,
     source_url: row.source_url ?? null,
@@ -617,6 +619,7 @@ function recipeToRow(recipe: Recipe) {
   return {
     recipe_id: recipe.recipe_id,
     name: recipe.name,
+    name_original: recipe.name_original ?? null,
     meal_types: recipe.meal_types ?? [],
     servings: recipe.servings ?? null,
     source_url: recipe.source_url ?? null,

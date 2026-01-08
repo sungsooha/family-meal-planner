@@ -3,6 +3,7 @@
 create table if not exists recipes (
   recipe_id text primary key,
   name text not null,
+  name_original text,
   meal_types jsonb,
   servings integer,
   source_url text,

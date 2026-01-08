@@ -33,6 +33,7 @@ type Ingredient = { name: string; quantity: number | string; unit: string };
 type Recipe = {
   recipe_id: string;
   name: string;
+  name_original?: string;
   meal_types?: string[];
   servings?: number;
   source_url?: string | null;
@@ -846,7 +847,10 @@ export default function WeeklyPlanPage() {
                         const entry = day.meals[meal];
                         const recipeMeta = entry?.recipe_id ? recipesById.get(entry.recipe_id) : null;
                         const thumbnail = recipeMeta?.thumbnail_url;
-                        const displayName = recipeMeta?.name ?? entry?.name;
+                    const displayName =
+                      language === "original"
+                        ? recipeMeta?.name_original ?? recipeMeta?.name ?? entry?.name
+                        : recipeMeta?.name ?? entry?.name;
                     const feedbackSource =
                       recipeMeta?.recipe_id && recipeMeta.recipe_id === activeRecipeId && activeRecipe
                         ? activeRecipe.family_feedback
@@ -1149,7 +1153,11 @@ export default function WeeklyPlanPage() {
           >
           <div className="flex items-start justify-between gap-3">
             <div>
-              <h3 className="text-lg font-semibold text-slate-900">{activeRecipe.name}</h3>
+              <h3 className="text-lg font-semibold text-slate-900">
+                {language === "original"
+                  ? activeRecipe.name_original ?? activeRecipe.name
+                  : activeRecipe.name}
+              </h3>
               {activeMealContext ? (
                 <p className="mt-1 text-xs font-semibold text-slate-500">
                   {activeDayLabel} · {MEAL_LABELS[activeMealContext.meal] ?? activeMealContext.meal}

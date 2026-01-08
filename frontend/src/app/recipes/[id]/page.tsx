@@ -14,6 +14,7 @@ type Ingredient = { name: string; quantity: number | string; unit: string };
 type Recipe = {
   recipe_id: string;
   name: string;
+  name_original?: string;
   meal_types?: string[];
   servings?: number;
   source_url?: string | null;
@@ -68,6 +69,8 @@ export default function RecipeDetailPage() {
 
   const ingredients = language === "original" ? recipe?.ingredients_original : recipe?.ingredients;
   const instructions = language === "original" ? recipe?.instructions_original : recipe?.instructions;
+  const recipeName =
+    language === "original" ? recipe?.name_original || recipe?.name : recipe?.name;
   const members = configData?.config.family_members ?? [];
 
   const formatIngredients = (items?: Ingredient[]) =>
@@ -115,6 +118,19 @@ export default function RecipeDetailPage() {
     if (!response.ok) return;
     setIsEditing(false);
     showToast("Saved. Weekly plan and shopping list refreshed.");
+    mutateRecipe(payload, { revalidate: false });
+    mutate(
+      "/api/recipes?view=summary",
+      (current?: Recipe[]) =>
+        current?.map((item) => (item.recipe_id === idParam ? { ...item, ...payload } : item)),
+      { revalidate: false },
+    );
+    mutate(
+      "/api/recipes",
+      (current?: Recipe[]) =>
+        current?.map((item) => (item.recipe_id === idParam ? { ...item, ...payload } : item)),
+      { revalidate: false },
+    );
     await mutateRecipe();
   };
 
@@ -207,7 +223,7 @@ export default function RecipeDetailPage() {
         </Link>
         <div className="mt-2 flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h2 className="text-lg font-semibold text-slate-900">{recipe.name}</h2>
+            <h2 className="text-lg font-semibold text-slate-900">{recipeName}</h2>
           </div>
           <button
             className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs text-slate-500 hover:text-slate-900"
@@ -313,6 +329,12 @@ export default function RecipeDetailPage() {
                   className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
                   value={draft.name}
                   onChange={(event) => setDraft({ ...draft, name: event.target.value })}
+                />
+                <label className="text-xs uppercase tracking-wide text-slate-400">Name (original)</label>
+                <input
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                  value={draft.name_original ?? ""}
+                  onChange={(event) => setDraft({ ...draft, name_original: event.target.value })}
                 />
                 <label className="text-xs uppercase tracking-wide text-slate-400">Meal types (comma-separated)</label>
                 <input

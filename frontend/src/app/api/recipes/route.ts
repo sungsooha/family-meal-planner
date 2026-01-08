@@ -19,6 +19,7 @@ export async function GET(request: Request) {
     const summary = enriched.map((recipe) => ({
       recipe_id: recipe.recipe_id,
       name: recipe.name,
+      name_original: recipe.name_original ?? null,
       meal_types: recipe.meal_types ?? [],
       meal_type: recipe.meal_type ?? null,
       servings: recipe.servings ?? null,

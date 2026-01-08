@@ -13,11 +13,13 @@ import ActionMenu from "@/components/ActionMenu";
 import ManualRecipeModal from "@/components/ManualRecipeModal";
 import RecipeImportModal, { ImportedRecipe } from "@/components/RecipeImportModal";
 import { registerOptimisticRecipe } from "@/lib/optimistic";
+import { useLanguage } from "@/components/LanguageProvider";
 
 type Ingredient = { name: string; quantity: number | string; unit: string };
 type Recipe = {
   recipe_id: string;
   name: string;
+  name_original?: string;
   meal_types?: string[];
   servings?: number;
   source_url?: string | null;
@@ -37,6 +39,7 @@ function RecipesPageClient() {
   const searchParams = useSearchParams();
   const { recipes, optimisticIds, mutateRecipes, isLoading } = useRecipes<Recipe>();
   const { mutate } = useSWRConfig();
+  const { language } = useLanguage();
   const prefetchedRecipes = useRef(new Set<string>());
   const prefetchRecipe = useCallback((recipeId: string) => {
     if (prefetchedRecipes.current.has(recipeId)) return;
@@ -222,7 +225,11 @@ function RecipesPageClient() {
                         </span>
                       ) : null}
                     </div>
-                    <h3 className="mt-2 text-sm font-semibold text-slate-900">{recipe.name}</h3>
+                    <h3 className="mt-2 text-sm font-semibold text-slate-900">
+                      {language === "original"
+                        ? recipe.name_original || recipe.name
+                        : recipe.name}
+                    </h3>
                   </div>
                 </div>
               </Link>

@@ -7,6 +7,7 @@ import { Upload, X, Shuffle } from "lucide-react";
 export type ImportedRecipe = {
   recipe_id: string;
   name: string;
+  name_original?: string;
   meal_types?: string[];
   servings?: number;
   source_url?: string | null;

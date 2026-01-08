@@ -8,6 +8,7 @@ type Ingredient = { name: string; quantity: number | string; unit: string };
 export type ManualRecipePayload = {
   recipe_id: string;
   name: string;
+  name_original?: string;
   meal_types?: string[];
   servings?: number;
   source_url?: string | null;
@@ -54,6 +55,7 @@ const parseInstructions = (value: string): string[] => {
 export default function ManualRecipeModal({ open, onClose, onCreated }: Props) {
   const [manualRecipeId, setManualRecipeId] = useState("");
   const [manualName, setManualName] = useState("");
+  const [manualNameOriginal, setManualNameOriginal] = useState("");
   const [manualMealTypes, setManualMealTypes] = useState("");
   const [manualServings, setManualServings] = useState("");
   const [manualSourceUrl, setManualSourceUrl] = useState("");
@@ -68,6 +70,7 @@ export default function ManualRecipeModal({ open, onClose, onCreated }: Props) {
   const resetManualForm = () => {
     setManualRecipeId("");
     setManualName("");
+    setManualNameOriginal("");
     setManualMealTypes("");
     setManualServings("");
     setManualSourceUrl("");
@@ -91,6 +94,7 @@ export default function ManualRecipeModal({ open, onClose, onCreated }: Props) {
     const payload: ManualRecipePayload = {
       recipe_id: finalRecipeId,
       name: manualName.trim(),
+      name_original: manualNameOriginal.trim() || undefined,
       meal_types: parseMealTypes(manualMealTypes),
       servings: manualServings ? Number(manualServings) : undefined,
       source_url: manualSourceUrl.trim() || null,
@@ -138,6 +142,12 @@ export default function ManualRecipeModal({ open, onClose, onCreated }: Props) {
               className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
               value={manualName}
               onChange={(event) => setManualName(event.target.value)}
+            />
+            <label className="text-xs uppercase tracking-wide text-slate-400">Name (original)</label>
+            <input
+              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+              value={manualNameOriginal}
+              onChange={(event) => setManualNameOriginal(event.target.value)}
             />
             <label className="text-xs uppercase tracking-wide text-slate-400">Meal types (comma-separated)</label>
             <input

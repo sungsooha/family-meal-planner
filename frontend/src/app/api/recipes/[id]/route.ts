@@ -36,6 +36,7 @@ export async function GET(_: Request, { params }: Params) {
     ...recipe,
     source_url: recipe.source_url ?? source?.source_url ?? null,
     thumbnail_url: thumbnailUrl,
+    name_original: recipe.name_original ?? null,
     source_title: source?.title ?? null,
   });
 }
