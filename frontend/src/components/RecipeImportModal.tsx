@@ -20,7 +20,7 @@ type Recipe = {
 type Props = {
   open: boolean;
   onClose: () => void;
-  onImported?: () => void | Promise<void>;
+  onImported?: () => void | Promise<unknown>;
 };
 
 export default function RecipeImportModal({ open, onClose, onImported }: Props) {

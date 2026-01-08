@@ -3,6 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { useSWRConfig } from "swr";
 import { useRecipes } from "@/lib/useRecipes";
@@ -32,7 +33,7 @@ type Recipe = {
 
 const MEAL_TYPES = ["breakfast", "lunch", "dinner", "snack"] as const;
 
-export default function RecipesPage() {
+function RecipesPageClient() {
   const searchParams = useSearchParams();
   const { recipes, mutateRecipes, isLoading } = useRecipes<Recipe>();
   const { mutate } = useSWRConfig();
@@ -206,5 +207,13 @@ export default function RecipesPage() {
       )}
 
     </div>
+  );
+}
+
+export default function RecipesPage() {
+  return (
+    <Suspense fallback={<div className="rounded-3xl border border-white/70 bg-white/80 p-6 text-sm text-slate-600 shadow-sm">Loading recipes...</div>}>
+      <RecipesPageClient />
+    </Suspense>
   );
 }
