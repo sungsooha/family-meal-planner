@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 export const CACHE_HEADERS = {
-  "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
+  "Cache-Control": "public, s-maxage=5, stale-while-revalidate=60",
 };
 
 export function jsonWithCache(data: unknown, init?: ResponseInit) {

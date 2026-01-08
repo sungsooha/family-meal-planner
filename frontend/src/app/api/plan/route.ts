@@ -1,4 +1,3 @@
-import { NextResponse } from "next/server";
 import { getWeeklyPlanForDate, toIsoDate } from "@/lib/data";
 import { jsonWithCache } from "@/lib/cache";
 

@@ -20,7 +20,7 @@ type Recipe = {
 type Props = {
   open: boolean;
   onClose: () => void;
-  onImported?: () => void | Promise<unknown>;
+  onImported?: (recipe: Recipe) => void | Promise<void>;
 };
 
 export default function RecipeImportModal({ open, onClose, onImported }: Props) {
@@ -88,7 +88,7 @@ export default function RecipeImportModal({ open, onClose, onImported }: Props) 
     resetForm();
     onClose();
     if (onImported) {
-      await onImported();
+      await onImported(parsed);
     }
   };
 

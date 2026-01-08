@@ -2,8 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Suspense } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useSWRConfig } from "swr";
 import { useRecipes } from "@/lib/useRecipes";
@@ -13,6 +12,7 @@ import { Filter, Upload } from "lucide-react";
 import ActionMenu from "@/components/ActionMenu";
 import ManualRecipeModal from "@/components/ManualRecipeModal";
 import RecipeImportModal from "@/components/RecipeImportModal";
+import { registerOptimisticRecipe } from "@/lib/optimistic";
 
 type Ingredient = { name: string; quantity: number | string; unit: string };
 type Recipe = {
@@ -35,7 +35,7 @@ const MEAL_TYPES = ["breakfast", "lunch", "dinner", "snack"] as const;
 
 function RecipesPageClient() {
   const searchParams = useSearchParams();
-  const { recipes, mutateRecipes, isLoading } = useRecipes<Recipe>();
+  const { recipes, optimisticIds, mutateRecipes, isLoading } = useRecipes<Recipe>();
   const { mutate } = useSWRConfig();
   const prefetchedRecipes = useRef(new Set<string>());
   const prefetchRecipe = useCallback((recipeId: string) => {
@@ -69,8 +69,42 @@ function RecipesPageClient() {
     setFilters((prev) => (prev.includes(meal) ? prev.filter((item) => item !== meal) : [...prev, meal]));
   };
 
-  const handleManualCreated = async () => {
-    await mutateRecipes();
+  const handleManualCreated = async (recipe: Recipe) => {
+    registerOptimisticRecipe(recipe);
+    await mutateRecipes(
+      (current = []) => {
+        const exists = current.some((item) => item.recipe_id === recipe.recipe_id);
+        return exists ? current : [...current, recipe];
+      },
+      { revalidate: false },
+    );
+    mutate(
+      "/api/recipes",
+      (current?: Recipe[]) => {
+        if (!current) return [recipe];
+        return current.some((item) => item.recipe_id === recipe.recipe_id) ? current : [...current, recipe];
+      },
+      { revalidate: false },
+    );
+  };
+
+  const handleImportedRecipe = async (recipe: Recipe) => {
+    registerOptimisticRecipe(recipe);
+    await mutateRecipes(
+      (current = []) => {
+        const exists = current.some((item) => item.recipe_id === recipe.recipe_id);
+        return exists ? current : [...current, recipe];
+      },
+      { revalidate: false },
+    );
+    mutate(
+      "/api/recipes",
+      (current?: Recipe[]) => {
+        if (!current) return [recipe];
+        return current.some((item) => item.recipe_id === recipe.recipe_id) ? current : [...current, recipe];
+      },
+      { revalidate: false },
+    );
   };
 
   return (
@@ -182,6 +216,11 @@ function RecipesPageClient() {
                           </span>
                         );
                       })()}
+                      {optimisticIds.has(recipe.recipe_id) ? (
+                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] text-slate-500">
+                          syncing
+                        </span>
+                      ) : null}
                     </div>
                     <h3 className="mt-2 text-sm font-semibold text-slate-900">{recipe.name}</h3>
                   </div>
@@ -194,7 +233,7 @@ function RecipesPageClient() {
         <RecipeImportModal
           open={showImport}
           onClose={() => setShowImport(false)}
-          onImported={mutateRecipes}
+          onImported={handleImportedRecipe}
         />
       )}
 

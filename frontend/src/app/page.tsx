@@ -27,6 +27,7 @@ import ActionMenu from "@/components/ActionMenu";
 import FamilyFeedback from "@/components/FamilyFeedback";
 import ManualRecipeModal from "@/components/ManualRecipeModal";
 import RecipeImportModal from "@/components/RecipeImportModal";
+import { registerOptimisticRecipe } from "@/lib/optimistic";
 
 type Ingredient = { name: string; quantity: number | string; unit: string };
 type Recipe = {
@@ -122,7 +123,7 @@ export default function WeeklyPlanPage() {
   const [feedbackTarget, setFeedbackTarget] = useState<{ date: string; meal: string } | null>(null);
   const pickerButtonRef = useRef<HTMLButtonElement | null>(null);
   const pickerPanelRef = useRef<HTMLDivElement | null>(null);
-  const { recipes, recipesById, mutateRecipes } = useRecipes<Recipe>();
+  const { recipes, recipesById, optimisticIds, mutateRecipes } = useRecipes<Recipe>();
   const { mutate } = useSWRConfig();
   const prefetchedRecipes = useRef(new Set<string>());
   const prefetchRecipe = useCallback((recipeId: string) => {
@@ -142,6 +143,7 @@ export default function WeeklyPlanPage() {
 
   const { data: planData, mutate: mutatePlan } = useSWR<WeeklyPlan>(
     startDateReady && startDate ? planKey : null,
+    { revalidateOnFocus: true, revalidateOnReconnect: true },
   );
   const { data: activeRecipeData } = useSWR<Recipe | null>(
     activeRecipeId ? `/api/recipes/${activeRecipeId}` : null,
@@ -223,6 +225,11 @@ export default function WeeklyPlanPage() {
       }
     }
   }, [planData]);
+
+  useEffect(() => {
+    if (!startDateReady || !startDate) return;
+    mutatePlan();
+  }, [startDateReady, startDate, mutatePlan]);
 
 
   useEffect(() => {
@@ -419,12 +426,46 @@ export default function WeeklyPlanPage() {
     await mutatePlan();
   };
 
-  const handleManualCreated = async (recipeId: string) => {
-    await mutateRecipes();
+  const handleManualCreated = async (recipe: Recipe) => {
+    registerOptimisticRecipe(recipe);
+    await mutateRecipes(
+      (current = []) => {
+        const exists = current.some((item) => item.recipe_id === recipe.recipe_id);
+        return exists ? current : [...current, recipe];
+      },
+      { revalidate: false },
+    );
+    mutate(
+      "/api/recipes",
+      (current?: Recipe[]) => {
+        if (!current) return [recipe];
+        return current.some((item) => item.recipe_id === recipe.recipe_id) ? current : [...current, recipe];
+      },
+      { revalidate: false },
+    );
     if (manualContext) {
-      await handleAssign(recipeId, manualContext);
+      await handleAssign(recipe.recipe_id, manualContext);
       setManualContext(null);
     }
+  };
+
+  const handleImportedRecipe = async (recipe: Recipe) => {
+    registerOptimisticRecipe(recipe);
+    await mutateRecipes(
+      (current = []) => {
+        const exists = current.some((item) => item.recipe_id === recipe.recipe_id);
+        return exists ? current : [...current, recipe];
+      },
+      { revalidate: false },
+    );
+    mutate(
+      "/api/recipes",
+      (current?: Recipe[]) => {
+        if (!current) return [recipe];
+        return current.some((item) => item.recipe_id === recipe.recipe_id) ? current : [...current, recipe];
+      },
+      { revalidate: false },
+    );
   };
 
   const handlePrintWeek = () => {
@@ -806,25 +847,26 @@ export default function WeeklyPlanPage() {
                         const recipeMeta = entry?.recipe_id ? recipesById.get(entry.recipe_id) : null;
                         const thumbnail = recipeMeta?.thumbnail_url;
                         const displayName = recipeMeta?.name ?? entry?.name;
-                        const feedbackSource =
-                          recipeMeta?.recipe_id && recipeMeta.recipe_id === activeRecipeId && activeRecipe
-                            ? activeRecipe.family_feedback
-                            : recipeMeta?.family_feedback;
-                        const feedbackSummary = feedbackSource ? getFeedbackSummary(feedbackSource) : null;
-                        const isFeedbackOpen =
-                          feedbackTarget?.date === day.date && feedbackTarget.meal === meal;
-                        const isSelected =
+                    const feedbackSource =
+                      recipeMeta?.recipe_id && recipeMeta.recipe_id === activeRecipeId && activeRecipe
+                        ? activeRecipe.family_feedback
+                        : recipeMeta?.family_feedback;
+                    const feedbackSummary = feedbackSource ? getFeedbackSummary(feedbackSource) : null;
+                    const isFeedbackOpen =
+                      feedbackTarget?.date === day.date && feedbackTarget.meal === meal;
+                    const isSelected =
                           !!entry?.recipe_id &&
                           entry.recipe_id === activeRecipeId &&
                           activeMealContext?.date === day.date &&
                           activeMealContext?.meal === meal;
-                        return (
-                          <div
-                            key={meal}
-                            className={`flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-slate-50/80 px-4 py-3 transition hover:border-slate-200 hover:bg-white hover:shadow-md hover:ring-1 hover:ring-emerald-200/70 ${
-                              isSelected ? "border-rose-300 bg-rose-100/70 shadow-sm ring-2 ring-rose-200/70" : ""
-                            }`}
-                          >
+                    const isOptimistic = entry?.recipe_id ? optimisticIds.has(entry.recipe_id) : false;
+                    return (
+                      <div
+                        key={meal}
+                        className={`flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-slate-50/80 px-4 py-3 transition hover:border-slate-200 hover:bg-white hover:shadow-md hover:ring-1 hover:ring-emerald-200/70 ${
+                          isSelected ? "border-rose-300 bg-rose-100/70 shadow-sm ring-2 ring-rose-200/70" : ""
+                        }`}
+                      >
                             <div className="flex items-center gap-3">
                               <div className="relative">
                                 {thumbnail ? (
@@ -850,16 +892,16 @@ export default function WeeklyPlanPage() {
                                   {MEAL_SHORT[meal]}
                                 </span>
                               </div>
-                              <div>
-                                {displayName ? (
-                                  <button
-                                    className={`text-left text-xs font-medium hover:text-slate-700 ${
-                                      entry?.completed
-                                        ? "text-slate-400 line-through"
-                                        : isSelected
-                                          ? "text-rose-700"
-                                          : "text-slate-900"
-                                    }`}
+                            <div>
+                              {displayName ? (
+                                <button
+                                  className={`text-left text-xs font-medium hover:text-slate-700 ${
+                                    entry?.completed
+                                      ? "text-slate-400 line-through"
+                                      : isSelected
+                                        ? "text-rose-700"
+                                        : "text-slate-900"
+                                  }`}
                                     onClick={() => {
                                       setActiveRecipeId(entry?.recipe_id ?? null);
                                       setActiveMealContext({ date: day.date, meal });
@@ -869,19 +911,24 @@ export default function WeeklyPlanPage() {
                                         prefetchRecipe(entry.recipe_id);
                                       }
                                     }}
-                                  >
-                                    {displayName}
-                                  </button>
-                                ) : (
-                                  <button
-                                    className="text-left text-xs font-medium text-slate-400 hover:text-slate-500"
-                                    onClick={() => setSelectMeal({ date: day.date, meal })}
-                                  >
-                                    Add a recipe
-                                  </button>
-                                )}
-                              </div>
+                                >
+                                  {displayName}
+                                </button>
+                              ) : (
+                                <button
+                                  className="text-left text-xs font-medium text-slate-400 hover:text-slate-500"
+                                  onClick={() => setSelectMeal({ date: day.date, meal })}
+                                >
+                                  Add a recipe
+                                </button>
+                              )}
+                              {isOptimistic ? (
+                                <span className="mt-1 inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[10px] text-slate-500">
+                                  syncing
+                                </span>
+                              ) : null}
                             </div>
+                          </div>
                             <div className="flex items-center gap-2">
                               {entry?.recipe_id ? (
                                 <button
@@ -1071,7 +1118,7 @@ export default function WeeklyPlanPage() {
         <RecipeImportModal
           open={showImport}
           onClose={() => setShowImport(false)}
-          onImported={mutateRecipes}
+          onImported={handleImportedRecipe}
         />
       )}
 

@@ -21,7 +21,7 @@ export type ManualRecipePayload = {
 type Props = {
   open: boolean;
   onClose: () => void;
-  onCreated?: (recipeId: string) => void | Promise<void>;
+  onCreated?: (recipe: ManualRecipePayload) => void | Promise<void>;
 };
 
 const parseMealTypes = (value: string) =>
@@ -114,7 +114,7 @@ export default function ManualRecipeModal({ open, onClose, onCreated }: Props) {
     resetManualForm();
     onClose();
     if (onCreated) {
-      await onCreated(finalRecipeId);
+      await onCreated(payload);
     }
   };
 
