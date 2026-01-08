@@ -31,6 +31,7 @@ create table if not exists recipe_sources (
   updated_at timestamptz default now()
 );
 
+
 create table if not exists daily_plans (
   date date primary key,
   meals jsonb not null,

@@ -1129,8 +1129,20 @@ export default function WeeklyPlanPage() {
       {showManual && (
         <ManualRecipeModal
           open={showManual}
-          onClose={() => setShowManual(false)}
+          onClose={() => {
+            setShowManual(false);
+            setManualContext(null);
+          }}
           onCreated={handleManualCreated}
+          backLabel="Back to add menu"
+          onBack={
+            manualContext
+              ? () => {
+                  setShowManual(false);
+                  setAddMenu(manualContext);
+                }
+              : undefined
+          }
         />
       )}
 
