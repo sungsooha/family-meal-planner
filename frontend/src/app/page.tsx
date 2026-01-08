@@ -25,6 +25,8 @@ import {
 import { useLanguage } from "@/components/LanguageProvider";
 import ActionMenu from "@/components/ActionMenu";
 import FamilyFeedback from "@/components/FamilyFeedback";
+import ManualRecipeModal from "@/components/ManualRecipeModal";
+import RecipeImportModal from "@/components/RecipeImportModal";
 
 type Ingredient = { name: string; quantity: number | string; unit: string };
 type Recipe = {
@@ -104,11 +106,8 @@ export default function WeeklyPlanPage() {
   const [selectMeal, setSelectMeal] = useState<{ date: string; meal: string } | null>(null);
   const [addMenu, setAddMenu] = useState<{ date: string; meal: string } | null>(null);
   const [showImport, setShowImport] = useState(false);
-  const [jsonInput, setJsonInput] = useState("");
-  const [jsonError, setJsonError] = useState("");
-  const [jsonSuccess, setJsonSuccess] = useState("");
-  const [recipeIdInput, setRecipeIdInput] = useState("");
-  const [sourceUrlInput, setSourceUrlInput] = useState("");
+  const [showManual, setShowManual] = useState(false);
+  const [manualContext, setManualContext] = useState<{ date: string; meal: string } | null>(null);
   const [activeRecipeId, setActiveRecipeId] = useState<string | null>(null);
   const [activeRecipe, setActiveRecipe] = useState<Recipe | null>(null);
   const [activeMealContext, setActiveMealContext] = useState<{ date: string; meal: string } | null>(null);
@@ -200,6 +199,21 @@ export default function WeeklyPlanPage() {
         .catch(() => {});
     }
   }, []);
+
+  useEffect(() => {
+    if (!plan || !startDateReady) return;
+    const url = new URL(window.location.href);
+    const assignId = url.searchParams.get("assign");
+    const date = url.searchParams.get("date");
+    const meal = url.searchParams.get("meal");
+    if (assignId && date && meal) {
+      handleAssign(assignId, { date, meal });
+      url.searchParams.delete("assign");
+      url.searchParams.delete("date");
+      url.searchParams.delete("meal");
+      window.history.replaceState(null, "", `${url.pathname}${url.search}`);
+    }
+  }, [plan, startDateReady]);
 
   useEffect(() => {
     if (planData) {
@@ -367,11 +381,12 @@ export default function WeeklyPlanPage() {
     await mutatePlan();
   };
 
-  const handleAssign = async (recipeId: string) => {
-    if (!selectMeal) return;
+  const handleAssign = async (recipeId: string, context?: { date: string; meal: string }) => {
+    const target = context ?? selectMeal;
+    if (!target) return;
     const updated = await postJson<WeeklyPlan>("/api/plan/assign", {
-      date: selectMeal.date,
-      meal: selectMeal.meal,
+      date: target.date,
+      meal: target.meal,
       recipe_id: recipeId,
       start_date: startDate,
     });
@@ -402,6 +417,14 @@ export default function WeeklyPlanPage() {
     const updated = await postJson<WeeklyPlan>("/api/plan/complete", { date, meal, start_date: startDate });
     setPlan(updated);
     await mutatePlan();
+  };
+
+  const handleManualCreated = async (recipeId: string) => {
+    await mutateRecipes();
+    if (manualContext) {
+      await handleAssign(recipeId, manualContext);
+      setManualContext(null);
+    }
   };
 
   const handlePrintWeek = () => {
@@ -470,6 +493,7 @@ export default function WeeklyPlanPage() {
       month: "numeric",
       day: "numeric",
     });
+
 
   const buildCalendar = (month: Date) => {
     const year = month.getFullYear();
@@ -1028,99 +1052,35 @@ export default function WeeklyPlanPage() {
               >
                 Add new recipe (JSON)
               </button>
+              <button
+                className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left text-sm font-medium text-slate-700 hover:border-slate-300"
+                onClick={() => {
+                  setAddMenu(null);
+                  setManualContext(addMenu);
+                  setShowManual(true);
+                }}
+              >
+                Add new recipe (manual)
+              </button>
             </div>
           </div>
         </div>
       )}
 
       {showImport && (
-        <div className="fixed inset-0 z-30 flex items-center justify-center bg-slate-900/40 p-4">
-          <div className="w-full max-w-2xl rounded-3xl bg-white p-6 shadow-xl">
-            <div className="flex items-center justify-between">
-              <p className="text-xs uppercase tracking-wide text-slate-400">Import from JSON</p>
-              <button onClick={() => setShowImport(false)}>
-                <X className="h-4 w-4 text-slate-400" />
-              </button>
-            </div>
-            <p className="mt-2 text-sm text-slate-600">
-              Paste the JSON returned by ChatGPT. Recipe ID and source URL are optional.
-            </p>
-            <div className="mt-3 grid gap-2 md:grid-cols-[1fr_auto]">
-              <input
-                className="rounded-xl border border-slate-200 px-3 py-2 text-xs"
-                placeholder="Recipe ID (optional)"
-                value={recipeIdInput}
-                onChange={(event) => setRecipeIdInput(event.target.value)}
-              />
-              <button
-                className="rounded-full border border-slate-200 bg-white px-3 py-2 text-xs text-slate-500"
-                onClick={() => setRecipeIdInput(crypto.randomUUID().replace(/-/g, ""))}
-              >
-                Generate
-              </button>
-            </div>
-            <input
-              className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2 text-xs"
-              placeholder="Source URL (optional)"
-              value={sourceUrlInput}
-              onChange={(event) => setSourceUrlInput(event.target.value)}
-            />
-            <textarea
-              className="mt-3 min-h-[160px] w-full rounded-2xl border border-slate-200 px-4 py-3 text-xs text-slate-700"
-              placeholder='{"recipe_id":"...","name":"..."}'
-              value={jsonInput}
-              onChange={(event) => setJsonInput(event.target.value)}
-            />
-            <div className="mt-3 flex flex-wrap items-center gap-3">
-              <button
-                className="rounded-full bg-emerald-700 px-4 py-2 text-xs text-white hover:bg-emerald-600"
-                onClick={async () => {
-                  setJsonError("");
-                  setJsonSuccess("");
-                  let parsed;
-                  try {
-                    parsed = JSON.parse(jsonInput);
-                  } catch {
-                    setJsonError("Invalid JSON format.");
-                    return;
-                  }
-                  const finalRecipeId = parsed.recipe_id || recipeIdInput.trim();
-                  const finalSourceUrl = parsed.source_url || sourceUrlInput.trim();
-                  if (!finalRecipeId) {
-                    setJsonError("Missing recipe_id.");
-                    return;
-                  }
-                  parsed.recipe_id = finalRecipeId;
-                  if (finalSourceUrl) parsed.source_url = finalSourceUrl;
-                  if (!parsed.name) {
-                    setJsonError("Missing name.");
-                    return;
-                  }
-                  const response = await fetch("/api/recipes", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(parsed),
-                  });
-                  if (!response.ok) {
-                    const data = await response.json().catch(() => ({}));
-                    setJsonError(data.error ?? "Failed to import recipe.");
-                    return;
-                  }
-                  setJsonSuccess("Recipe imported.");
-                  setJsonInput("");
-                  setRecipeIdInput("");
-                  setSourceUrlInput("");
-                  setShowImport(false);
-                  await mutateRecipes();
-                }}
-              >
-                Add recipe
-              </button>
-              {jsonError && <span className="text-xs text-rose-500">{jsonError}</span>}
-              {jsonSuccess && <span className="text-xs text-emerald-600">{jsonSuccess}</span>}
-            </div>
-          </div>
-        </div>
+        <RecipeImportModal
+          open={showImport}
+          onClose={() => setShowImport(false)}
+          onImported={mutateRecipes}
+        />
+      )}
+
+      {showManual && (
+        <ManualRecipeModal
+          open={showManual}
+          onClose={() => setShowManual(false)}
+          onCreated={handleManualCreated}
+        />
       )}
 
       {activeRecipe && (
