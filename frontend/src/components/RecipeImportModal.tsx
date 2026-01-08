@@ -4,9 +4,9 @@ import type { ChangeEvent } from "react";
 import { useState } from "react";
 import { Upload, X, Shuffle } from "lucide-react";
 
-type Recipe = {
-  recipe_id?: string;
-  name?: string;
+export type ImportedRecipe = {
+  recipe_id: string;
+  name: string;
   meal_types?: string[];
   servings?: number;
   source_url?: string | null;
@@ -20,7 +20,7 @@ type Recipe = {
 type Props = {
   open: boolean;
   onClose: () => void;
-  onImported?: (recipe: Recipe) => void | Promise<void>;
+  onImported?: (recipe: ImportedRecipe) => void | Promise<void>;
 };
 
 export default function RecipeImportModal({ open, onClose, onImported }: Props) {
@@ -53,9 +53,9 @@ export default function RecipeImportModal({ open, onClose, onImported }: Props) 
   const handleImport = async () => {
     setJsonError("");
     setJsonSuccess("");
-    let parsed: Recipe;
+    let parsed: ImportedRecipe;
     try {
-      parsed = JSON.parse(jsonInput) as Recipe;
+      parsed = JSON.parse(jsonInput) as ImportedRecipe;
     } catch {
       setJsonError("Invalid JSON format.");
       return;
@@ -66,10 +66,11 @@ export default function RecipeImportModal({ open, onClose, onImported }: Props) 
       setJsonError("Missing recipe_id.");
       return;
     }
-    parsed.recipe_id = finalRecipeId;
-    if (finalSourceUrl) {
-      parsed.source_url = finalSourceUrl;
-    }
+    parsed = {
+      ...parsed,
+      recipe_id: finalRecipeId,
+      source_url: finalSourceUrl || parsed.source_url || null,
+    };
     if (!parsed.name) {
       setJsonError("Missing name.");
       return;

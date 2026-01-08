@@ -11,7 +11,7 @@ import { BLUR_DATA_URL } from "@/lib/image";
 import { Filter, Upload } from "lucide-react";
 import ActionMenu from "@/components/ActionMenu";
 import ManualRecipeModal from "@/components/ManualRecipeModal";
-import RecipeImportModal from "@/components/RecipeImportModal";
+import RecipeImportModal, { ImportedRecipe } from "@/components/RecipeImportModal";
 import { registerOptimisticRecipe } from "@/lib/optimistic";
 
 type Ingredient = { name: string; quantity: number | string; unit: string };
@@ -88,7 +88,7 @@ function RecipesPageClient() {
     );
   };
 
-  const handleImportedRecipe = async (recipe: Recipe) => {
+  const handleImportedRecipe = async (recipe: ImportedRecipe) => {
     registerOptimisticRecipe(recipe);
     await mutateRecipes(
       (current = []) => {

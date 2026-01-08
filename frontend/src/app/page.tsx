@@ -26,7 +26,7 @@ import { useLanguage } from "@/components/LanguageProvider";
 import ActionMenu from "@/components/ActionMenu";
 import FamilyFeedback from "@/components/FamilyFeedback";
 import ManualRecipeModal from "@/components/ManualRecipeModal";
-import RecipeImportModal from "@/components/RecipeImportModal";
+import RecipeImportModal, { ImportedRecipe } from "@/components/RecipeImportModal";
 import { registerOptimisticRecipe } from "@/lib/optimistic";
 
 type Ingredient = { name: string; quantity: number | string; unit: string };
@@ -449,7 +449,7 @@ export default function WeeklyPlanPage() {
     }
   };
 
-  const handleImportedRecipe = async (recipe: Recipe) => {
+  const handleImportedRecipe = async (recipe: ImportedRecipe) => {
     registerOptimisticRecipe(recipe);
     await mutateRecipes(
       (current = []) => {
