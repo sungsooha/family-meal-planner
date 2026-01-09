@@ -15,26 +15,10 @@ import RecipeSearchAddModals from "@/components/RecipeSearchAddModals";
 import SearchAddActionButton from "@/components/SearchAddActionButton";
 import { registerOptimisticRecipe } from "@/lib/optimistic";
 import { useLanguage } from "@/components/LanguageProvider";
-import type { CreatedRecipe } from "@/lib/types";
+import type { CreatedRecipe, Recipe } from "@/lib/types";
 import { useSearchAddRecipeFlow } from "@/lib/useSearchAddRecipeFlow";
 
 type Ingredient = { name: string; quantity: number | string; unit: string };
-type Recipe = {
-  recipe_id: string;
-  name: string;
-  name_original?: string;
-  meal_types?: string[];
-  servings?: number;
-  source_url?: string | null;
-  thumbnail_url?: string | null;
-  notes?: string;
-  family_feedback_score?: number;
-  family_feedback?: Record<string, number>;
-  ingredients?: Ingredient[];
-  ingredients_original?: Ingredient[];
-  instructions?: string[];
-  instructions_original?: string[];
-};
 
 const MEAL_TYPES = ["breakfast", "lunch", "dinner", "snack"] as const;
 
@@ -81,17 +65,17 @@ function RecipesPageClient() {
     await mutateRecipes(
       (current = []) => {
         const exists = current.some((item) => item.recipe_id === recipe.recipe_id);
-        return exists ? current : [...current, recipe as Recipe];
+        return exists ? current : [...current, recipe];
       },
       { revalidate: false },
     );
     mutate(
       "/api/recipes",
       (current?: Recipe[]) => {
-        if (!current) return [recipe as Recipe];
+        if (!current) return [recipe];
         return current.some((item) => item.recipe_id === recipe.recipe_id)
           ? current
-          : [...current, recipe as Recipe];
+          : [...current, recipe];
       },
       { revalidate: false },
     );

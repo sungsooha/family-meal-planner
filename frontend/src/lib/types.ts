@@ -12,3 +12,8 @@ export type CreatedRecipe = {
   instructions?: string[];
   instructions_original?: string[];
 };
+
+export type Recipe = CreatedRecipe & {
+  family_feedback_score?: number;
+  family_feedback?: Record<string, number>;
+};

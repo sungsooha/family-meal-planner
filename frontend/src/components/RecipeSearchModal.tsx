@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { Search, X } from "lucide-react";
 import { useRecipes } from "@/lib/useRecipes";
+import { decodeHtmlEntities, sanitizeTitle } from "@/lib/text";
 import { useLanguage } from "./LanguageProvider";
 
 type RecipeCandidate = {
@@ -51,16 +52,7 @@ export default function RecipeSearchModal({
 }: Props) {
   const hydratedRef = useRef(false);
   const { language } = useLanguage();
-  const decodeHtml = (value: string) => {
-    if (!value) return value;
-    if (typeof document === "undefined") return value;
-    const textarea = document.createElement("textarea");
-    textarea.innerHTML = value;
-    return textarea.value;
-  };
-
-  const stripTags = (value: string) =>
-    value.replace(/#[^\s#]+/g, "").replace(/\s{2,}/g, " ").trim();
+  const decodeHtml = decodeHtmlEntities;
 
   const { recipes } = useRecipes<Recipe>();
   const [query, setQuery] = useState("");
@@ -428,7 +420,7 @@ export default function RecipeSearchModal({
                     onClick={() =>
                       onUseCandidate({
                         ...item,
-                        title: stripTags(decodeHtml(item.title)),
+                        title: sanitizeTitle(item.title),
                         ingredients: item.ingredients?.map(decodeHtml),
                         instructions: item.instructions?.map(decodeHtml),
                       })
@@ -453,7 +445,7 @@ export default function RecipeSearchModal({
                       </div>
                     )}
                     <span className="text-xs font-semibold text-slate-700">
-                      {stripTags(decodeHtml(item.title))}
+                      {sanitizeTitle(item.title)}
                     </span>
                   </button>
                 ))}
@@ -482,7 +474,7 @@ export default function RecipeSearchModal({
               </div>
             )}
             <p className="mt-2 font-semibold text-slate-700">
-              {stripTags(decodeHtml(previewCandidate.title))}
+              {sanitizeTitle(previewCandidate.title)}
             </p>
             {previewCandidate.source_host && (
               <p className="mt-1 text-[9px] uppercase tracking-wide text-slate-400">
