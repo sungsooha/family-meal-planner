@@ -7,6 +7,7 @@ import {
   saveDailyPlan,
   updateRecipe,
 } from "@/lib/data";
+import { getYouTubeId } from "@/lib/youtube";
 import { computeShoppingList, syncShoppingState } from "@/lib/shopping";
 import { jsonWithCache } from "@/lib/cache";
 
@@ -21,15 +22,9 @@ export async function GET(_: Request, { params }: Params) {
   const source = await getRecipeSourceById(id);
   let thumbnailUrl = recipe.thumbnail_url ?? source?.thumbnail_url ?? null;
   if (!thumbnailUrl && recipe.source_url) {
-    try {
-      const parsed = new URL(recipe.source_url);
-      let videoId = "";
-      if (parsed.hostname.includes("youtu.be")) videoId = parsed.pathname.replace("/", "");
-      else if (parsed.searchParams.get("v")) videoId = parsed.searchParams.get("v") ?? "";
-      else if (parsed.pathname.startsWith("/shorts/")) videoId = parsed.pathname.split("/shorts/")[1]?.split("/")[0] ?? "";
-      if (videoId) thumbnailUrl = `https://i.ytimg.com/vi/${videoId}/maxresdefault.jpg`;
-    } catch {
-      thumbnailUrl = thumbnailUrl ?? null;
+    const videoId = getYouTubeId(recipe.source_url);
+    if (videoId) {
+      thumbnailUrl = `https://i.ytimg.com/vi/${videoId}/maxresdefault.jpg`;
     }
   }
   return jsonWithCache({

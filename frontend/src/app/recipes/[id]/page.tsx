@@ -12,8 +12,10 @@ import RecipeFormBody, {
 } from "@/components/RecipeFormBody";
 import { ArrowLeft, ListChecks, ShoppingBasket } from "lucide-react";
 import { useLanguage } from "@/components/LanguageProvider";
+import { getYouTubeId } from "@/lib/youtube";
 import { useToast } from "@/components/ToastProvider";
 import type { Recipe, Ingredient } from "@/lib/types";
+import { parseMealTypes } from "@/lib/recipeForm";
 
 
 type FamilyMember = {
@@ -136,12 +138,6 @@ export default function RecipeDetailPage() {
     ? setInstructionDraftOriginal
     : setInstructionDraftEn;
 
-  const parseMealTypes = (value: string) =>
-    value
-      .split(",")
-      .map((item) => item.trim())
-      .filter(Boolean);
-
   const handleSave = async () => {
     if (!draft || !idParam) return;
     const payload = { ...draft, meal_types: parseMealTypes(mealTypesInput) };
@@ -225,19 +221,10 @@ export default function RecipeDetailPage() {
     await saveFeedback();
   };
 
-  const youtubeId = useMemo(() => {
-    const url = recipe?.source_url;
-    if (!url) return null;
-    try {
-      const parsed = new URL(url);
-      if (parsed.hostname.includes("youtu.be")) return parsed.pathname.replace("/", "");
-      if (parsed.searchParams.get("v")) return parsed.searchParams.get("v");
-      if (parsed.pathname.startsWith("/shorts/")) return parsed.pathname.split("/shorts/")[1]?.split("/")[0];
-      return null;
-    } catch {
-      return null;
-    }
-  }, [recipe?.source_url]);
+  const youtubeId = useMemo(
+    () => getYouTubeId(recipe?.source_url ?? null),
+    [recipe?.source_url],
+  );
 
   if (!recipe) {
     return (

@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { buildGeminiRecipePrompt } from "@/lib/prompt";
+import { formatIngredients, formatInstructions } from "@/lib/recipeForm";
+import { getYouTubeId } from "@/lib/youtube";
 type PrefillPayload = {
   name: string;
   name_original?: string;
@@ -19,7 +21,6 @@ type GeminiResponse = {
   }>;
 };
 
-const YOUTUBE_HOSTS = new Set(["www.youtube.com", "youtube.com", "m.youtube.com", "youtu.be"]);
 const CACHE_TTL_MS = 1000 * 60 * 60 * 6;
 const prefillCache = new Map<
   string,
@@ -29,21 +30,6 @@ const prefillCache = new Map<
     model?: string;
   }
 >();
-
-function youtubeIdFromUrl(url: string): string | null {
-  try {
-    const parsed = new URL(url);
-    if (!YOUTUBE_HOSTS.has(parsed.hostname)) return null;
-    if (parsed.hostname === "youtu.be") {
-      return parsed.pathname.replace("/", "");
-    }
-    const id = parsed.searchParams.get("v");
-    if (id) return id;
-  } catch {
-    return null;
-  }
-  return null;
-}
 
 async function fetchYouTubeDetails(videoId: string, apiKey: string) {
   const detailsUrl = new URL("https://www.googleapis.com/youtube/v3/videos");
@@ -132,18 +118,6 @@ function parseGeminiJson(text: string): any | null {
   }
 }
 
-function formatIngredients(items?: Array<{ name: string; quantity: number | string; unit: string }>) {
-  if (!Array.isArray(items)) return "";
-  return items
-    .map((item) => [item.name ?? "", item.quantity ?? "", item.unit ?? ""].join(","))
-    .filter((line) => line.trim())
-    .join("\n");
-}
-
-function formatInstructions(items?: string[]) {
-  if (!Array.isArray(items)) return "";
-  return items.map((item) => item.trim()).filter(Boolean).join("\n");
-}
 
 export async function POST(request: Request) {
   const payload = await request.json().catch(() => null);
@@ -152,7 +126,7 @@ export async function POST(request: Request) {
   }
 
   const sourceUrl = String(payload.source_url);
-  const videoId = youtubeIdFromUrl(sourceUrl);
+  const videoId = getYouTubeId(sourceUrl);
   if (!videoId) {
     return NextResponse.json({ error: "Only YouTube URLs are supported right now." }, { status: 400 });
   }

@@ -2,6 +2,7 @@ import { promises as fs } from "fs";
 import path from "path";
 import { getSupabaseAdmin, isSupabaseEnabled } from "./supabase";
 import { normalizeFeedback } from "./feedback";
+import { getYouTubeId } from "./youtube";
 
 export type Ingredient = {
   name: string;
@@ -133,24 +134,11 @@ function normalizeRecipe(recipe: Recipe): Recipe {
   return normalized;
 }
 
-function youtubeIdFromUrl(url?: string | null): string | null {
-  if (!url) return null;
-  try {
-    const parsed = new URL(url);
-    if (parsed.hostname.includes("youtu.be")) return parsed.pathname.replace("/", "");
-    if (parsed.searchParams.get("v")) return parsed.searchParams.get("v");
-    if (parsed.pathname.startsWith("/shorts/")) return parsed.pathname.split("/shorts/")[1]?.split("/")[0];
-    return null;
-  } catch {
-    return null;
-  }
-}
-
 function normalizeSourceUrl(url?: string | null): string | null {
   if (!url) return null;
   try {
     const parsed = new URL(url);
-    const youtubeId = youtubeIdFromUrl(url);
+    const youtubeId = getYouTubeId(url);
     if (youtubeId) {
       return `https://www.youtube.com/watch?v=${youtubeId}`;
     }
@@ -165,7 +153,7 @@ function normalizeSourceUrl(url?: string | null): string | null {
 }
 
 function deriveThumbnailUrl(sourceUrl?: string | null): string | null {
-  const id = youtubeIdFromUrl(sourceUrl);
+  const id = getYouTubeId(sourceUrl);
   if (!id) return null;
   return `https://i.ytimg.com/vi/${id}/maxresdefault.jpg`;
 }
@@ -242,7 +230,7 @@ export async function addRecipe(payload: Recipe): Promise<{ ok: boolean; error?:
   if (isSupabaseEnabled()) {
     const admin = getSupabaseAdmin();
     if (normalized.source_url) {
-      const youtubeId = youtubeIdFromUrl(normalized.source_url);
+      const youtubeId = getYouTubeId(normalized.source_url);
       const query = admin.from("recipes").select("recipe_id,source_url").limit(1);
       let existing;
       if (youtubeId) {

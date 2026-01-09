@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getYouTubeId } from "@/lib/youtube";
 
 type SearchResult = {
   title: string;
@@ -15,18 +16,6 @@ type Candidate = {
   instructions?: string[];
   source_host?: string;
 };
-
-function youtubeIdFromUrl(url: string) {
-  try {
-    const parsed = new URL(url);
-    if (parsed.hostname.includes("youtu.be")) return parsed.pathname.replace("/", "");
-    if (parsed.searchParams.get("v")) return parsed.searchParams.get("v");
-    if (parsed.pathname.startsWith("/shorts/")) return parsed.pathname.split("/shorts/")[1]?.split("/")[0];
-    return null;
-  } catch {
-    return null;
-  }
-}
 
 function extractJsonLd(html: string) {
   const matches = html.matchAll(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi);
@@ -121,7 +110,7 @@ function scoreCandidate(title: string, query: string, url: string) {
 }
 
 async function fetchRecipeCandidate(url: string, fallbackTitle: string): Promise<Candidate | null> {
-  const youtubeId = youtubeIdFromUrl(url);
+  const youtubeId = getYouTubeId(url);
   if (youtubeId) {
     return {
       title: fallbackTitle,

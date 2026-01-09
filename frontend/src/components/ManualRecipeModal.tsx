@@ -7,6 +7,8 @@ import RecipeFormBody, {
   InstructionDraft,
 } from "@/components/RecipeFormBody";
 import type { CreatedRecipe, Ingredient } from "@/lib/types";
+import { parseIngredients, parseInstructions, parseMealTypes } from "@/lib/recipeForm";
+import { getYouTubeId } from "@/lib/youtube";
 import { useLanguage } from "./LanguageProvider";
 
 export type ManualRecipePayload = CreatedRecipe;
@@ -40,32 +42,6 @@ type Props = {
   noticeMessage?: string;
 };
 
-const parseMealTypes = (value: string) =>
-  value
-    .split(",")
-    .map((item) => item.trim())
-    .filter(Boolean);
-
-const parseIngredients = (value: string): Ingredient[] => {
-  if (!value.trim()) return [];
-  return value
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line) => {
-      const [name, qty, unit] = line.split(",").map((part) => part.trim());
-      const quantity = Number.isNaN(Number(qty)) ? qty ?? "" : Number(qty);
-      return { name: name ?? "", quantity, unit: unit ?? "" };
-    });
-};
-
-const parseInstructions = (value: string): string[] => {
-  if (!value.trim()) return [];
-  return value
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean);
-};
 
 export default function ManualRecipeModal({
   open,
@@ -247,22 +223,7 @@ export default function ManualRecipeModal({
   const setSecondaryInstructionDraft = showEnglishPrimary
     ? setInstructionDraftOriginal
     : setInstructionDraft;
-  const youtubeId = (() => {
-    if (!manualSourceUrl) return null;
-    try {
-      const parsed = new URL(manualSourceUrl);
-      if (parsed.hostname.includes("youtu.be")) {
-        return parsed.pathname.replace("/", "");
-      }
-      if (parsed.searchParams.get("v")) return parsed.searchParams.get("v");
-      if (parsed.pathname.startsWith("/shorts/")) {
-        return parsed.pathname.split("/shorts/")[1]?.split("/")[0];
-      }
-      return null;
-    } catch {
-      return null;
-    }
-  })();
+  const youtubeId = getYouTubeId(manualSourceUrl);
 
   return (
     <div

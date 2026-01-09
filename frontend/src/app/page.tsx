@@ -23,6 +23,7 @@ import {
   Heart,
 } from "lucide-react";
 import { useLanguage } from "@/components/LanguageProvider";
+import { getYouTubeId } from "@/lib/youtube";
 import ActionMenu from "@/components/ActionMenu";
 import FamilyFeedback from "@/components/FamilyFeedback";
 import RecipeImportModal, { ImportedRecipe } from "@/components/RecipeImportModal";
@@ -531,19 +532,10 @@ export default function WeeklyPlanPage() {
     ? plan?.days.find((day) => day.date === activeMealContext.date) ?? null
     : null;
   const activeDayLabel = activeMealContext?.date ? dayName(activeMealContext.date) : "";
-  const youtubeId = useMemo(() => {
-    const url = activeRecipe?.source_url;
-    if (!url) return null;
-    try {
-      const parsed = new URL(url);
-      if (parsed.hostname.includes("youtu.be")) return parsed.pathname.replace("/", "");
-      if (parsed.searchParams.get("v")) return parsed.searchParams.get("v");
-      if (parsed.pathname.startsWith("/shorts/")) return parsed.pathname.split("/shorts/")[1]?.split("/")[0];
-      return null;
-    } catch {
-      return null;
-    }
-  }, [activeRecipe?.source_url]);
+  const youtubeId = useMemo(
+    () => getYouTubeId(activeRecipe?.source_url ?? null),
+    [activeRecipe?.source_url],
+  );
 
   const saveFeedback = async () => {
     if (feedbackSavingRef.current) return;
