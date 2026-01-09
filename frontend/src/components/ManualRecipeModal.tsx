@@ -147,15 +147,21 @@ export default function ManualRecipeModal({
   const handleSave = async () => {
     setManualError("");
     setManualSuccess("");
-    if (!manualName.trim()) {
+    const primaryName = manualName.trim() || manualNameOriginal.trim();
+    if (!primaryName) {
       setManualError("Name is required.");
       return;
     }
     const finalRecipeId = manualRecipeId.trim() || crypto.randomUUID().replace(/-/g, "");
+    const primaryIsEnglish = language === "en";
+    const nameValue = primaryIsEnglish ? manualName.trim() || manualNameOriginal.trim() : manualNameOriginal.trim() || manualName.trim();
+    const nameOriginalValue = primaryIsEnglish
+      ? manualNameOriginal.trim() || undefined
+      : manualName.trim() || undefined;
     const payload: ManualRecipePayload = {
       recipe_id: finalRecipeId,
-      name: manualName.trim(),
-      name_original: manualNameOriginal.trim() || undefined,
+      name: nameValue,
+      name_original: nameOriginalValue,
       meal_types: parseMealTypes(manualMealTypes),
       servings: manualServings ? Number(manualServings) : undefined,
       source_url: manualSourceUrl.trim() || null,

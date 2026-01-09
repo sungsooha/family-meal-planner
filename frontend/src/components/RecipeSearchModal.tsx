@@ -1,11 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Search, X } from "lucide-react";
-import { useRecipes } from "@/lib/useRecipes";
 import { decodeHtmlEntities, sanitizeTitle } from "@/lib/text";
-import type { Recipe } from "@/lib/types";
 import { useLanguage } from "./LanguageProvider";
 
 type RecipeCandidate = {
@@ -18,6 +16,13 @@ type RecipeCandidate = {
   source_host?: string;
 };
 
+type LocalResult = {
+  recipe_id: string;
+  name: string;
+  name_original?: string | null;
+  source_url?: string | null;
+  thumbnail_url?: string | null;
+};
 
 type Props = {
   open: boolean;
@@ -49,10 +54,10 @@ export default function RecipeSearchModal({
   const { language } = useLanguage();
   const decodeHtml = decodeHtmlEntities;
 
-  const { recipes } = useRecipes<Recipe>();
   const [query, setQuery] = useState("");
   const [onlyYoutube, setOnlyYoutube] = useState(false);
   const [onlineResults, setOnlineResults] = useState<RecipeCandidate[]>([]);
+  const [localResults, setLocalResults] = useState<LocalResult[]>([]);
   const [searchError, setSearchError] = useState("");
   const [searchNotice, setSearchNotice] = useState("");
   const [searchHint, setSearchHint] = useState("");
@@ -155,19 +160,47 @@ export default function RecipeSearchModal({
     }
   };
 
-  const normalizedQuery = query.trim().toLowerCase();
-  const normalizedTokens = normalizedQuery.split(/\s+/).filter(Boolean);
-  const localResults = normalizedTokens.length > 0
-    ? recipes
-        .filter((recipe) => {
-          const name = recipe.name?.toLowerCase() ?? "";
-          const nameOriginal = recipe.name_original?.toLowerCase() ?? "";
-          return normalizedTokens.every(
-            (token) => name.includes(token) || nameOriginal.includes(token),
-          );
-        })
-        .slice(0, 5)
-    : [];
+  const normalizeUrl = (value?: string | null) => {
+    if (!value) return "";
+    try {
+      const url = new URL(value);
+      if (url.hostname.includes("youtu.be")) {
+        return `youtube:${url.pathname.replace("/", "")}`;
+      }
+      if (url.hostname.includes("youtube.com") && url.searchParams.get("v")) {
+        return `youtube:${url.searchParams.get("v")}`;
+      }
+      url.searchParams.forEach((_, key) => {
+        if (key.startsWith("utm_")) url.searchParams.delete(key);
+      });
+      url.hash = "";
+      return url.toString();
+    } catch {
+      return value.trim().toLowerCase();
+    }
+  };
+
+  const normalizeTitle = (value: string) => sanitizeTitle(value).toLowerCase();
+  const localUrlSet = useMemo(
+    () => new Set(localResults.map((recipe) => normalizeUrl(recipe.source_url ?? ""))),
+    [localResults],
+  );
+  const localTitleSet = useMemo(
+    () =>
+      new Set(
+        localResults
+          .map((recipe) => normalizeTitle(recipe.name_original ?? recipe.name ?? ""))
+          .filter(Boolean),
+      ),
+    [localResults],
+  );
+  const filteredOnlineResults = onlineResults.filter((item) => {
+    const normalizedUrl = normalizeUrl(item.source_url);
+    if (normalizedUrl && localUrlSet.has(normalizedUrl)) return false;
+    const normalizedTitle = normalizeTitle(item.title ?? "");
+    if (normalizedTitle && localTitleSet.has(normalizedTitle)) return false;
+    return true;
+  });
 
   const handleSearch = async (overrideQuery?: string) => {
     const term =
@@ -218,6 +251,38 @@ export default function RecipeSearchModal({
     });
     setLoading(false);
   };
+
+  useEffect(() => {
+    if (!open) return;
+    const trimmed = query.trim();
+    if (!trimmed) {
+      setLocalResults([]);
+      return;
+    }
+    const controller = new AbortController();
+    const timer = setTimeout(async () => {
+      try {
+        const response = await fetch(
+          `/api/recipes/local-search?q=${encodeURIComponent(trimmed)}&limit=8`,
+          { signal: controller.signal },
+        );
+        if (!response.ok) {
+          setLocalResults([]);
+          return;
+        }
+        const data = await response.json();
+        setLocalResults(Array.isArray(data) ? data : []);
+      } catch (error) {
+        if ((error as Error)?.name !== "AbortError") {
+          setLocalResults([]);
+        }
+      }
+    }, 150);
+    return () => {
+      controller.abort();
+      clearTimeout(timer);
+    };
+  }, [open, query]);
 
   useEffect(() => {
     if (!open) return;
@@ -404,11 +469,11 @@ export default function RecipeSearchModal({
           </div>
           <div className="relative rounded-2xl border border-slate-200 bg-white px-3 py-3 text-xs text-slate-600">
             <p className="text-[11px] uppercase tracking-wide text-slate-400">Online results</p>
-            {onlineResults.length === 0 ? (
+            {filteredOnlineResults.length === 0 ? (
               <p className="mt-2 text-xs text-slate-400">Run a search to see results.</p>
             ) : (
               <div className="mt-2 space-y-2">
-                {onlineResults.map((item) => (
+                {filteredOnlineResults.map((item) => (
                   <button
                     key={item.source_url}
                     className="flex w-full items-center gap-3 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-left hover:border-slate-200 hover:bg-white"

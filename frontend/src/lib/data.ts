@@ -146,6 +146,24 @@ function youtubeIdFromUrl(url?: string | null): string | null {
   }
 }
 
+function normalizeSourceUrl(url?: string | null): string | null {
+  if (!url) return null;
+  try {
+    const parsed = new URL(url);
+    const youtubeId = youtubeIdFromUrl(url);
+    if (youtubeId) {
+      return `https://www.youtube.com/watch?v=${youtubeId}`;
+    }
+    parsed.hash = "";
+    parsed.searchParams.forEach((_, key) => {
+      if (key.startsWith("utm_")) parsed.searchParams.delete(key);
+    });
+    return parsed.toString().replace(/\/$/, "");
+  } catch {
+    return url.trim();
+  }
+}
+
 function deriveThumbnailUrl(sourceUrl?: string | null): string | null {
   const id = youtubeIdFromUrl(sourceUrl);
   if (!id) return null;
@@ -217,9 +235,30 @@ export async function addRecipe(payload: Recipe): Promise<{ ok: boolean; error?:
   if (!payload.recipe_id || !payload.name) {
     return { ok: false, error: "Missing recipe_id or name." };
   }
+  const normalized = normalizeRecipe(payload);
+  if (normalized.source_url) {
+    normalized.source_url = normalizeSourceUrl(normalized.source_url);
+  }
   if (isSupabaseEnabled()) {
     const admin = getSupabaseAdmin();
-    const row = recipeToRow(normalizeRecipe(payload));
+    if (normalized.source_url) {
+      const youtubeId = youtubeIdFromUrl(normalized.source_url);
+      const query = admin.from("recipes").select("recipe_id,source_url").limit(1);
+      let existing;
+      if (youtubeId) {
+        const { data } = await query.or(
+          `source_url.ilike.%v=${youtubeId}%,source_url.ilike.%youtu.be/${youtubeId}%,source_url.ilike.%/shorts/${youtubeId}%`,
+        );
+        existing = data?.[0];
+      } else {
+        const { data } = await query.eq("source_url", normalized.source_url);
+        existing = data?.[0];
+      }
+      if (existing) {
+        return { ok: false, error: "Recipe already exists for this source." };
+      }
+    }
+    const row = recipeToRow(normalized);
     const { error } = await admin.from("recipes").insert(row);
     if (error) {
       return { ok: false, error: error.message };
@@ -230,6 +269,17 @@ export async function addRecipe(payload: Recipe): Promise<{ ok: boolean; error?:
   if (existing) {
     return { ok: false, error: "Recipe ID already exists." };
   }
+  if (normalized.source_url) {
+    const recipes = await getRecipes();
+    const normalizedSource = normalizeSourceUrl(normalized.source_url);
+    const duplicate = recipes.find((recipe) => {
+      const candidate = normalizeSourceUrl(recipe.source_url ?? null);
+      return candidate && normalizedSource && candidate === normalizedSource;
+    });
+    if (duplicate) {
+      return { ok: false, error: "Recipe already exists for this source." };
+    }
+  }
   const files = await fs.readdir(RECIPES_DIR).catch(() => [] as string[]);
   let baseName = safeFilename(payload.name);
   if (!baseName.endsWith(".json")) baseName = `${baseName}.json`;
@@ -237,7 +287,7 @@ export async function addRecipe(payload: Recipe): Promise<{ ok: boolean; error?:
   if (files.includes(fileName)) {
     fileName = `${safeFilename(payload.name)}-${payload.recipe_id.slice(0, 6)}.json`;
   }
-  await writeJson(path.join(RECIPES_DIR, fileName), normalizeRecipe(payload));
+  await writeJson(path.join(RECIPES_DIR, fileName), normalized);
   return { ok: true };
 }
 
