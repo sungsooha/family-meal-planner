@@ -12,6 +12,7 @@ import { Filter, Upload } from "lucide-react";
 import ActionMenu from "@/components/ActionMenu";
 import RecipeImportModal, { ImportedRecipe } from "@/components/RecipeImportModal";
 import RecipeSearchAddModals from "@/components/RecipeSearchAddModals";
+import SearchAddActionButton from "@/components/SearchAddActionButton";
 import { registerOptimisticRecipe } from "@/lib/optimistic";
 import { useLanguage } from "@/components/LanguageProvider";
 import { useSearchAddRecipeFlow } from "@/lib/useSearchAddRecipeFlow";
@@ -135,12 +136,7 @@ function RecipesPageClient() {
             >
               Add recipe (manual)
             </button>
-            <button
-              className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 hover:text-slate-900"
-              onClick={() => searchFlow.openSearch()}
-            >
-              Search & add
-            </button>
+            <SearchAddActionButton onClick={searchFlow.openSearch} />
             <button
               className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 hover:text-slate-900"
               onClick={() => setShowImport(true)}

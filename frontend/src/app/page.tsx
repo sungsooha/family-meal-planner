@@ -27,6 +27,7 @@ import ActionMenu from "@/components/ActionMenu";
 import FamilyFeedback from "@/components/FamilyFeedback";
 import RecipeImportModal, { ImportedRecipe } from "@/components/RecipeImportModal";
 import RecipeSearchAddModals from "@/components/RecipeSearchAddModals";
+import SearchAddActionButton from "@/components/SearchAddActionButton";
 import { registerOptimisticRecipe } from "@/lib/optimistic";
 import { useSearchAddRecipeFlow } from "@/lib/useSearchAddRecipeFlow";
 
@@ -1099,16 +1100,15 @@ export default function WeeklyPlanPage() {
               >
                 Choose from recipes
               </button>
-              <button
+              <SearchAddActionButton
+                label="Search & add recipe"
                 className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left text-sm font-medium text-slate-700 hover:border-slate-300"
                 onClick={() => {
                   setManualContext(addMenu);
                   searchFlow.openSearch();
                   setAddMenu(null);
                 }}
-              >
-                Search & add recipe
-              </button>
+              />
               <button
                 className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left text-sm font-medium text-slate-700 hover:border-slate-300"
                 onClick={() => {
