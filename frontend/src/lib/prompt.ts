@@ -2,11 +2,16 @@ export function buildGeminiRecipePrompt(input: {
   title: string;
   description: string;
   topComment: string;
+  linkedText?: string;
+  linkedUrl?: string | null;
 }): string {
-  const { title, description, topComment } = input;
+  const { title, description, topComment, linkedText, linkedUrl } = input;
   return [
     "You are extracting a recipe from a YouTube video.",
     "Use the description or top comment if they contain ingredients/instructions.",
+    linkedUrl
+      ? `If a linked recipe page is provided, prioritize its ingredients/instructions: ${linkedUrl}`
+      : "If a linked recipe page is provided, prioritize its ingredients/instructions.",
     "Ignore sponsorships, promos, and unrelated chatter.",
     "Return ONLY valid JSON with keys:",
     "name, name_original, meal_types, servings, ingredients, ingredients_original, instructions, instructions_original.",
@@ -25,5 +30,7 @@ export function buildGeminiRecipePrompt(input: {
     `Top comment:\n${topComment}`,
     "",
     `Description:\n${description}`,
+    linkedText ? "" : "",
+    linkedText ? `Linked page text:\n${linkedText}` : "",
   ].join("\n");
 }

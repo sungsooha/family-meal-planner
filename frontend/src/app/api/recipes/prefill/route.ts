@@ -66,21 +66,58 @@ async function fetchYouTubeDetails(videoId: string, apiKey: string) {
     "";
 
   let topComment = "";
+  let commentWithLink = "";
   const commentUrl = new URL("https://www.googleapis.com/youtube/v3/commentThreads");
   commentUrl.searchParams.set("part", "snippet");
   commentUrl.searchParams.set("videoId", videoId);
   commentUrl.searchParams.set("order", "relevance");
-  commentUrl.searchParams.set("maxResults", "1");
+  commentUrl.searchParams.set("maxResults", "5");
   commentUrl.searchParams.set("key", apiKey);
   const commentRes = await fetch(commentUrl.toString());
   if (commentRes.ok) {
     const commentPayload = await commentRes.json();
-    topComment =
-      commentPayload.items?.[0]?.snippet?.topLevelComment?.snippet?.textOriginal ??
-      commentPayload.items?.[0]?.snippet?.topLevelComment?.snippet?.textDisplay ??
-      "";
+    const comments =
+      commentPayload.items?.map((item: any) => item?.snippet?.topLevelComment?.snippet) ?? [];
+    const first = comments[0];
+    topComment = first?.textOriginal ?? first?.textDisplay ?? "";
+    for (const comment of comments) {
+      const text = comment?.textOriginal ?? comment?.textDisplay ?? "";
+      if (text && /https?:\/\//i.test(text)) {
+        commentWithLink = text;
+        break;
+      }
+    }
   }
-  return { title, description, topComment, thumbnail };
+  return { title, description, topComment, thumbnail, commentWithLink };
+}
+
+function extractFirstUrl(text: string): string | null {
+  if (!text) return null;
+  const match = text.match(/https?:\/\/[^\s)]+/i);
+  if (!match) return null;
+  return match[0].replace(/[),.]+$/, "");
+}
+
+async function fetchLinkedText(url: string): Promise<string> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 6000);
+  try {
+    const res = await fetch(url, { signal: controller.signal });
+    if (!res.ok) return "";
+    const html = await res.text();
+    const withoutScripts = html
+      .replace(/<script[\s\S]*?<\/script>/gi, " ")
+      .replace(/<style[\s\S]*?<\/style>/gi, " ");
+    const text = withoutScripts
+      .replace(/<[^>]+>/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    return text.slice(0, 4000);
+  } catch {
+    return "";
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 function parseGeminiJson(text: string): any | null {
@@ -134,8 +171,21 @@ export async function POST(request: Request) {
   }
 
   try {
-    const { title, description, topComment, thumbnail } = await fetchYouTubeDetails(videoId, youtubeKey);
-    const prompt = buildGeminiRecipePrompt({ title, description, topComment });
+    const { title, description, topComment, thumbnail, commentWithLink } = await fetchYouTubeDetails(
+      videoId,
+      youtubeKey,
+    );
+    const linkFromDescription = extractFirstUrl(description);
+    const linkFromComment = extractFirstUrl(commentWithLink || topComment);
+    const linkedUrl = linkFromDescription || linkFromComment;
+    const linkedText = linkedUrl ? await fetchLinkedText(linkedUrl) : "";
+    const prompt = buildGeminiRecipePrompt({
+      title,
+      description,
+      topComment,
+      linkedUrl,
+      linkedText,
+    });
 
     const modelOverride = payload?.model ? String(payload.model) : null;
     const models = modelOverride
