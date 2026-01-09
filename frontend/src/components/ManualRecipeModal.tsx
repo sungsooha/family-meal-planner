@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, X } from "lucide-react";
-import type { CreatedRecipe } from "@/lib/types";
+import { X } from "lucide-react";
+import RecipeFormBody, {
+  IngredientDraft,
+  InstructionDraft,
+} from "@/components/RecipeFormBody";
+import type { CreatedRecipe, Ingredient } from "@/lib/types";
 import { useLanguage } from "./LanguageProvider";
-
-type Ingredient = { name: string; quantity: number | string; unit: string };
-type IngredientDraft = { name: string; quantity: string; unit: string };
-type InstructionDraft = { text: string };
 
 export type ManualRecipePayload = CreatedRecipe;
 
@@ -264,74 +264,6 @@ export default function ManualRecipeModal({
     }
   })();
 
-  const parseQuantity = (value: string): number | string => {
-    const trimmed = value.trim();
-    if (!trimmed) return "";
-    const numeric = Number(trimmed);
-    return Number.isNaN(numeric) ? trimmed : numeric;
-  };
-
-  const addIngredient = (
-    draft: IngredientDraft,
-    setDraft: (value: IngredientDraft) => void,
-    items: Ingredient[],
-    setItems: (value: Ingredient[]) => void,
-  ) => {
-    if (!draft.name.trim()) return;
-    const next: Ingredient = {
-      name: draft.name.trim(),
-      quantity: parseQuantity(draft.quantity),
-      unit: draft.unit.trim(),
-    };
-    setItems([...items, next]);
-    setDraft({ name: "", quantity: "", unit: "" });
-  };
-
-  const updateIngredient = (
-    items: Ingredient[],
-    setItems: (value: Ingredient[]) => void,
-    index: number,
-    patch: Partial<Ingredient>,
-  ) => {
-    setItems(items.map((item, idx) => (idx === index ? { ...item, ...patch } : item)));
-  };
-
-  const removeIngredient = (
-    items: Ingredient[],
-    setItems: (value: Ingredient[]) => void,
-    index: number,
-  ) => {
-    setItems(items.filter((_, idx) => idx !== index));
-  };
-
-  const addInstruction = (
-    draft: InstructionDraft,
-    setDraft: (value: InstructionDraft) => void,
-    items: string[],
-    setItems: (value: string[]) => void,
-  ) => {
-    if (!draft.text.trim()) return;
-    setItems([...items, draft.text.trim()]);
-    setDraft({ text: "" });
-  };
-
-  const updateInstruction = (
-    items: string[],
-    setItems: (value: string[]) => void,
-    index: number,
-    value: string,
-  ) => {
-    setItems(items.map((item, idx) => (idx === index ? value : item)));
-  };
-
-  const removeInstruction = (
-    items: string[],
-    setItems: (value: string[]) => void,
-    index: number,
-  ) => {
-    setItems(items.filter((_, idx) => idx !== index));
-  };
-
   return (
     <div
       className="fixed inset-0 z-30 flex items-start justify-center bg-slate-900/40 p-4"
@@ -419,397 +351,45 @@ export default function ManualRecipeModal({
             )}
           </div>
         )}
-        <div className="mt-3 space-y-2">
-          <label className="text-xs uppercase tracking-wide text-slate-400">
-            {primaryLabel} <span className="text-rose-500">*</span>
-          </label>
-          <input
-            className="w-full rounded-xl border border-slate-200 px-3 py-1.5 text-sm"
-            value={primaryNameValue}
-            onChange={(event) => setPrimaryName(event.target.value)}
-          />
-          <label className="text-xs uppercase tracking-wide text-slate-400">Meal types</label>
-          <input
-            className="w-full rounded-xl border border-slate-200 px-3 py-1.5 text-sm"
-            value={manualMealTypes}
-            onChange={(event) => setManualMealTypes(event.target.value)}
-          />
-          <label className="text-xs uppercase tracking-wide text-slate-400">
-            Instructions ({showEnglishPrimary ? "en" : "original"})
-          </label>
-          <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-3">
-            {primaryInstructions.length > 0 ? (
-              <div className="grid gap-2">
-                {primaryInstructions.map((step, index) => (
-                  <div
-                    key={`step-${index}`}
-                    className="flex items-start gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2"
-                  >
-                    <span className="mt-1 text-[10px] text-slate-400">{index + 1}</span>
-                    <input
-                      className="flex-1 text-xs text-slate-700 focus:outline-none"
-                      value={step}
-                      onChange={(event) =>
-                        updateInstruction(
-                          primaryInstructions,
-                          setPrimaryInstructions,
-                          index,
-                          event.target.value,
-                        )
-                      }
-                    />
-                    <button
-                      type="button"
-                      className="mt-0.5 text-slate-400 hover:text-rose-500"
-                      onClick={() =>
-                        removeInstruction(primaryInstructions, setPrimaryInstructions, index)
-                      }
-                      aria-label="Remove step"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-[11px] text-slate-400">No steps added yet.</p>
-            )}
-            <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_auto]">
-              <input
-                className="rounded-xl border border-slate-200 px-3 py-1.5 text-xs"
-                placeholder="Add step"
-                value={primaryInstructionDraft.text}
-                onChange={(event) =>
-                  setPrimaryInstructionDraft({ text: event.target.value })
-                }
-              />
-              <button
-                type="button"
-                className="flex items-center justify-center rounded-xl border border-slate-200 bg-white px-2 text-xs text-slate-600 hover:text-slate-800"
-                onClick={() =>
-                  addInstruction(
-                    primaryInstructionDraft,
-                    setPrimaryInstructionDraft,
-                    primaryInstructions,
-                    setPrimaryInstructions,
-                  )
-                }
-              >
-                <Plus className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <label className="text-xs uppercase tracking-wide text-slate-400">
-              Ingredients ({showEnglishPrimary ? "en" : "original"})
-            </label>
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] uppercase tracking-wide text-slate-400">Servings</span>
-              <input
-                className="w-20 rounded-xl border border-slate-200 px-2 py-1 text-xs"
-                value={manualServings}
-                onChange={(event) => setManualServings(event.target.value)}
-              />
-            </div>
-          </div>
-          <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-3">
-            <div className="grid gap-2 sm:grid-cols-[1.2fr_0.6fr_0.6fr_auto]">
-              <input
-                className="rounded-xl border border-slate-200 px-3 py-1.5 text-xs"
-                placeholder="Ingredient"
-                value={primaryDraft.name}
-                onChange={(event) =>
-                  setPrimaryDraft({ ...primaryDraft, name: event.target.value })
-                }
-              />
-              <input
-                className="rounded-xl border border-slate-200 px-3 py-1.5 text-xs"
-                placeholder="Qty"
-                value={primaryDraft.quantity}
-                onChange={(event) =>
-                  setPrimaryDraft({ ...primaryDraft, quantity: event.target.value })
-                }
-              />
-              <input
-                className="rounded-xl border border-slate-200 px-3 py-1.5 text-xs"
-                placeholder="Unit"
-                value={primaryDraft.unit}
-                onChange={(event) =>
-                  setPrimaryDraft({ ...primaryDraft, unit: event.target.value })
-                }
-              />
-              <button
-                type="button"
-                className="flex items-center justify-center rounded-xl border border-slate-200 bg-white px-2 text-xs text-slate-600 hover:text-slate-800"
-                onClick={() =>
-                  addIngredient(primaryDraft, setPrimaryDraft, primaryIngredients, setPrimaryIngredients)
-                }
-              >
-                <Plus className="h-4 w-4" />
-              </button>
-            </div>
-            {primaryIngredients.length > 0 ? (
-              <div className="mt-3 grid gap-2">
-                {primaryIngredients.map((item, index) => (
-                  <div
-                    key={`${item.name}-${index}`}
-                    className="grid items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 sm:grid-cols-[1.2fr_0.6fr_0.6fr_auto]"
-                  >
-                    <input
-                      className="text-xs text-slate-700 focus:outline-none"
-                      value={item.name}
-                      onChange={(event) =>
-                        updateIngredient(primaryIngredients, setPrimaryIngredients, index, {
-                          name: event.target.value,
-                        })
-                      }
-                    />
-                    <input
-                      className="text-xs text-slate-700 focus:outline-none"
-                      value={String(item.quantity ?? "")}
-                      onChange={(event) =>
-                        updateIngredient(primaryIngredients, setPrimaryIngredients, index, {
-                          quantity: parseQuantity(event.target.value),
-                        })
-                      }
-                    />
-                    <input
-                      className="text-xs text-slate-700 focus:outline-none"
-                      value={item.unit}
-                      onChange={(event) =>
-                        updateIngredient(primaryIngredients, setPrimaryIngredients, index, {
-                          unit: event.target.value,
-                        })
-                      }
-                    />
-                    <button
-                      type="button"
-                      className="flex items-center justify-center text-slate-400 hover:text-rose-500"
-                      onClick={() =>
-                        removeIngredient(primaryIngredients, setPrimaryIngredients, index)
-                      }
-                      aria-label="Remove ingredient"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="mt-3 text-[11px] text-slate-400">No ingredients added yet.</p>
-            )}
-          </div>
-        </div>
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <button
-            className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] text-slate-600 hover:text-slate-700"
-            onClick={() => setShowNotes((prev) => !prev)}
-          >
-            {showNotes ? "Hide notes" : "Add notes"}
-          </button>
-          <button
-            className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] text-slate-600 hover:text-slate-700"
-            onClick={() => setShowOtherLanguage((prev) => !prev)}
-          >
-            {showOtherLanguage ? "Hide other language fields" : "Show other language fields"}
-          </button>
-          <button
-            className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] text-slate-600 hover:text-slate-700"
-            onClick={() => setShowSourceUrl((prev) => !prev)}
-          >
-            {showSourceUrl ? "Hide source URL" : "Add source URL"}
-          </button>
-        </div>
-        {showSourceUrl && (
-          <div className="mt-3">
-            <label className="text-xs uppercase tracking-wide text-slate-400">Source URL</label>
-            <input
-              className="w-full rounded-xl border border-slate-200 px-3 py-1.5 text-sm"
-              value={manualSourceUrl}
-              onChange={(event) => setManualSourceUrl(event.target.value)}
-            />
-          </div>
-        )}
-        {showNotes && (
-          <div className="mt-3">
-            <label className="text-xs uppercase tracking-wide text-slate-400">Notes</label>
-            <textarea
-              className="min-h-[100px] w-full rounded-xl border border-slate-200 px-3 py-2 text-xs"
-              value={manualNotes}
-              onChange={(event) => setManualNotes(event.target.value)}
-            />
-          </div>
-        )}
-        {showOtherLanguage && (
-          <div className="mt-3 space-y-2">
-            <label className="text-xs uppercase tracking-wide text-slate-400">{secondaryLabel}</label>
-            <input
-              className="w-full rounded-xl border border-slate-200 px-3 py-1.5 text-sm"
-              value={secondaryNameValue}
-              onChange={(event) => setSecondaryName(event.target.value)}
-            />
-            <label className="text-xs uppercase tracking-wide text-slate-400">
-              Instructions ({showEnglishPrimary ? "original" : "en"})
-            </label>
-            <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-3">
-              {secondaryInstructions.length > 0 ? (
-                <div className="grid gap-2">
-                  {secondaryInstructions.map((step, index) => (
-                    <div
-                      key={`step-secondary-${index}`}
-                      className="flex items-start gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2"
-                    >
-                      <span className="mt-1 text-[10px] text-slate-400">{index + 1}</span>
-                      <input
-                        className="flex-1 text-xs text-slate-700 focus:outline-none"
-                        value={step}
-                        onChange={(event) =>
-                          updateInstruction(
-                            secondaryInstructions,
-                            setSecondaryInstructions,
-                            index,
-                            event.target.value,
-                          )
-                        }
-                      />
-                      <button
-                        type="button"
-                        className="mt-0.5 text-slate-400 hover:text-rose-500"
-                        onClick={() =>
-                          removeInstruction(secondaryInstructions, setSecondaryInstructions, index)
-                        }
-                        aria-label="Remove step"
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-[11px] text-slate-400">No steps added yet.</p>
-              )}
-              <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_auto]">
-                <input
-                  className="rounded-xl border border-slate-200 px-3 py-1.5 text-xs"
-                  placeholder="Add step"
-                  value={secondaryInstructionDraft.text}
-                  onChange={(event) =>
-                    setSecondaryInstructionDraft({ text: event.target.value })
-                  }
-                />
-                <button
-                  type="button"
-                  className="flex items-center justify-center rounded-xl border border-slate-200 bg-white px-2 text-xs text-slate-600 hover:text-slate-800"
-                  onClick={() =>
-                    addInstruction(
-                      secondaryInstructionDraft,
-                      setSecondaryInstructionDraft,
-                      secondaryInstructions,
-                      setSecondaryInstructions,
-                    )
-                  }
-                >
-                  <Plus className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-            <label className="text-xs uppercase tracking-wide text-slate-400">
-              Ingredients ({showEnglishPrimary ? "original" : "en"})
-            </label>
-            <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-3">
-              <div className="grid gap-2 sm:grid-cols-[1.2fr_0.6fr_0.6fr_auto]">
-                <input
-                  className="rounded-xl border border-slate-200 px-3 py-1.5 text-xs"
-                  placeholder="Ingredient"
-                  value={secondaryDraft.name}
-                  onChange={(event) =>
-                    setSecondaryDraft({ ...secondaryDraft, name: event.target.value })
-                  }
-                />
-                <input
-                  className="rounded-xl border border-slate-200 px-3 py-1.5 text-xs"
-                  placeholder="Qty"
-                  value={secondaryDraft.quantity}
-                  onChange={(event) =>
-                    setSecondaryDraft({ ...secondaryDraft, quantity: event.target.value })
-                  }
-                />
-                <input
-                  className="rounded-xl border border-slate-200 px-3 py-1.5 text-xs"
-                  placeholder="Unit"
-                  value={secondaryDraft.unit}
-                  onChange={(event) =>
-                    setSecondaryDraft({ ...secondaryDraft, unit: event.target.value })
-                  }
-                />
-                <button
-                  type="button"
-                  className="flex items-center justify-center rounded-xl border border-slate-200 bg-white px-2 text-xs text-slate-600 hover:text-slate-800"
-                  onClick={() =>
-                    addIngredient(
-                      secondaryDraft,
-                      setSecondaryDraft,
-                      secondaryIngredients,
-                      setSecondaryIngredients,
-                    )
-                  }
-                >
-                  <Plus className="h-4 w-4" />
-                </button>
-              </div>
-              {secondaryIngredients.length > 0 ? (
-                <div className="mt-3 grid gap-2">
-                  {secondaryIngredients.map((item, index) => (
-                    <div
-                      key={`${item.name}-${index}`}
-                      className="grid items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 sm:grid-cols-[1.2fr_0.6fr_0.6fr_auto]"
-                    >
-                      <input
-                        className="text-xs text-slate-700 focus:outline-none"
-                        value={item.name}
-                        onChange={(event) =>
-                          updateIngredient(secondaryIngredients, setSecondaryIngredients, index, {
-                            name: event.target.value,
-                          })
-                        }
-                      />
-                      <input
-                        className="text-xs text-slate-700 focus:outline-none"
-                        value={String(item.quantity ?? "")}
-                        onChange={(event) =>
-                          updateIngredient(secondaryIngredients, setSecondaryIngredients, index, {
-                            quantity: parseQuantity(event.target.value),
-                          })
-                        }
-                      />
-                      <input
-                        className="text-xs text-slate-700 focus:outline-none"
-                        value={item.unit}
-                        onChange={(event) =>
-                          updateIngredient(secondaryIngredients, setSecondaryIngredients, index, {
-                            unit: event.target.value,
-                          })
-                        }
-                      />
-                      <button
-                        type="button"
-                        className="flex items-center justify-center text-slate-400 hover:text-rose-500"
-                        onClick={() =>
-                          removeIngredient(secondaryIngredients, setSecondaryIngredients, index)
-                        }
-                        aria-label="Remove ingredient"
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="mt-3 text-[11px] text-slate-400">No ingredients added yet.</p>
-              )}
-            </div>
-          </div>
-        )}
+        <RecipeFormBody
+          language={showEnglishPrimary ? "en" : "original"}
+          primaryLabel={primaryLabel}
+          secondaryLabel={secondaryLabel}
+          primaryNameValue={primaryNameValue}
+          setPrimaryName={setPrimaryName}
+          secondaryNameValue={secondaryNameValue}
+          setSecondaryName={setSecondaryName}
+          mealTypesValue={manualMealTypes}
+          setMealTypesValue={setManualMealTypes}
+          servingsValue={manualServings}
+          setServingsValue={setManualServings}
+          primaryInstructions={primaryInstructions}
+          setPrimaryInstructions={setPrimaryInstructions}
+          secondaryInstructions={secondaryInstructions}
+          setSecondaryInstructions={setSecondaryInstructions}
+          primaryIngredients={primaryIngredients}
+          setPrimaryIngredients={setPrimaryIngredients}
+          secondaryIngredients={secondaryIngredients}
+          setSecondaryIngredients={setSecondaryIngredients}
+          primaryIngredientDraft={primaryDraft}
+          setPrimaryIngredientDraft={setPrimaryDraft}
+          secondaryIngredientDraft={secondaryDraft}
+          setSecondaryIngredientDraft={setSecondaryDraft}
+          primaryInstructionDraft={primaryInstructionDraft}
+          setPrimaryInstructionDraft={setPrimaryInstructionDraft}
+          secondaryInstructionDraft={secondaryInstructionDraft}
+          setSecondaryInstructionDraft={setSecondaryInstructionDraft}
+          showOtherLanguage={showOtherLanguage}
+          onToggleOtherLanguage={() => setShowOtherLanguage((prev) => !prev)}
+          showNotes={showNotes}
+          onToggleNotes={() => setShowNotes((prev) => !prev)}
+          notesValue={manualNotes}
+          setNotesValue={setManualNotes}
+          showSourceUrl={showSourceUrl}
+          onToggleSourceUrl={() => setShowSourceUrl((prev) => !prev)}
+          sourceUrlValue={manualSourceUrl}
+          setSourceUrlValue={setManualSourceUrl}
+        />
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <button
             className="rounded-full bg-emerald-700 px-4 py-2 text-xs text-white hover:bg-emerald-600"

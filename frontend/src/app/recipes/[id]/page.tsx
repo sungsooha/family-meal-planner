@@ -6,10 +6,15 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import useSWR, { useSWRConfig } from "swr";
 import { useRecipes } from "@/lib/useRecipes";
 import FamilyFeedback from "@/components/FamilyFeedback";
+import RecipeFormBody, {
+  IngredientDraft,
+  InstructionDraft,
+} from "@/components/RecipeFormBody";
 import { ArrowLeft, ListChecks, ShoppingBasket } from "lucide-react";
 import { useLanguage } from "@/components/LanguageProvider";
 import { useToast } from "@/components/ToastProvider";
 import type { Recipe, Ingredient } from "@/lib/types";
+
 
 type FamilyMember = {
   id: string;
@@ -36,6 +41,23 @@ export default function RecipeDetailPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState<Recipe | null>(null);
   const [mealTypesInput, setMealTypesInput] = useState("");
+  const [showOtherLanguage, setShowOtherLanguage] = useState(false);
+  const [showNotes, setShowNotes] = useState(false);
+  const [showSourceUrl, setShowSourceUrl] = useState(false);
+  const [ingredientDraftEn, setIngredientDraftEn] = useState<IngredientDraft>({
+    name: "",
+    quantity: "",
+    unit: "",
+  });
+  const [ingredientDraftOriginal, setIngredientDraftOriginal] = useState<IngredientDraft>({
+    name: "",
+    quantity: "",
+    unit: "",
+  });
+  const [instructionDraftEn, setInstructionDraftEn] = useState<InstructionDraft>({ text: "" });
+  const [instructionDraftOriginal, setInstructionDraftOriginal] = useState<InstructionDraft>({
+    text: "",
+  });
   const recipeRef = useRef<Recipe | null>(null);
   const feedbackVersionRef = useRef(0);
   const feedbackSavingRef = useRef(false);
@@ -44,6 +66,13 @@ export default function RecipeDetailPage() {
     if (recipe) {
       setDraft({ ...recipe });
       setMealTypesInput((recipe.meal_types ?? []).join(", "));
+      setIngredientDraftEn({ name: "", quantity: "", unit: "" });
+      setIngredientDraftOriginal({ name: "", quantity: "", unit: "" });
+      setInstructionDraftEn({ text: "" });
+      setInstructionDraftOriginal({ text: "" });
+      setShowOtherLanguage(false);
+      setShowNotes(Boolean(recipe.notes));
+      setShowSourceUrl(false);
     }
   }, [recipe]);
 
@@ -56,34 +85,56 @@ export default function RecipeDetailPage() {
   const recipeName =
     language === "original" ? recipe?.name_original || recipe?.name : recipe?.name;
   const members = configData?.config.family_members ?? [];
-
-  const formatIngredients = (items?: Ingredient[]) =>
-    (items ?? [])
-      .map((item) => `${item.name},${item.quantity ?? ""},${item.unit ?? ""}`.trim())
-      .join("\n");
-
-  const parseIngredients = (value: string): Ingredient[] => {
-    if (!value.trim()) return [];
-    return value
-      .split("\n")
-      .map((line) => line.trim())
-      .filter(Boolean)
-      .map((line) => {
-        const [name, qty, unit] = line.split(",").map((part) => part.trim());
-        const quantity = Number.isNaN(Number(qty)) ? qty ?? "" : Number(qty);
-        return { name: name ?? "", quantity, unit: unit ?? "" };
-      });
+  const showEnglishPrimary = language === "en";
+  const primaryLabel = showEnglishPrimary ? "Name (English)" : "Name (Original)";
+  const secondaryLabel = showEnglishPrimary ? "Name (Original)" : "Name (English)";
+  const primaryNameValue = showEnglishPrimary ? draft?.name ?? "" : draft?.name_original ?? "";
+  const secondaryNameValue = showEnglishPrimary ? draft?.name_original ?? "" : draft?.name ?? "";
+  const updateDraft = (patch: Partial<Recipe>) => {
+    setDraft((prev) => (prev ? { ...prev, ...patch } : prev));
   };
-
-  const formatInstructions = (items?: string[]) => (items ?? []).join("\n");
-
-  const parseInstructions = (value: string): string[] => {
-    if (!value.trim()) return [];
-    return value
-      .split("\n")
-      .map((line) => line.trim())
-      .filter(Boolean);
-  };
+  const setPrimaryName = (value: string) =>
+    updateDraft(showEnglishPrimary ? { name: value } : { name_original: value });
+  const setSecondaryName = (value: string) =>
+    updateDraft(showEnglishPrimary ? { name_original: value } : { name: value });
+  const primaryIngredients = showEnglishPrimary
+    ? draft?.ingredients ?? []
+    : draft?.ingredients_original ?? [];
+  const secondaryIngredients = showEnglishPrimary
+    ? draft?.ingredients_original ?? []
+    : draft?.ingredients ?? [];
+  const primaryInstructions = showEnglishPrimary
+    ? draft?.instructions ?? []
+    : draft?.instructions_original ?? [];
+  const secondaryInstructions = showEnglishPrimary
+    ? draft?.instructions_original ?? []
+    : draft?.instructions ?? [];
+  const setPrimaryIngredients = (value: Ingredient[]) =>
+    updateDraft(showEnglishPrimary ? { ingredients: value } : { ingredients_original: value });
+  const setSecondaryIngredients = (value: Ingredient[]) =>
+    updateDraft(showEnglishPrimary ? { ingredients_original: value } : { ingredients: value });
+  const setPrimaryInstructions = (value: string[]) =>
+    updateDraft(showEnglishPrimary ? { instructions: value } : { instructions_original: value });
+  const setSecondaryInstructions = (value: string[]) =>
+    updateDraft(showEnglishPrimary ? { instructions_original: value } : { instructions: value });
+  const primaryIngredientDraft = showEnglishPrimary ? ingredientDraftEn : ingredientDraftOriginal;
+  const secondaryIngredientDraft = showEnglishPrimary ? ingredientDraftOriginal : ingredientDraftEn;
+  const setPrimaryIngredientDraft = showEnglishPrimary
+    ? setIngredientDraftEn
+    : setIngredientDraftOriginal;
+  const setSecondaryIngredientDraft = showEnglishPrimary
+    ? setIngredientDraftOriginal
+    : setIngredientDraftEn;
+  const primaryInstructionDraft = showEnglishPrimary ? instructionDraftEn : instructionDraftOriginal;
+  const secondaryInstructionDraft = showEnglishPrimary
+    ? instructionDraftOriginal
+    : instructionDraftEn;
+  const setPrimaryInstructionDraft = showEnglishPrimary
+    ? setInstructionDraftEn
+    : setInstructionDraftOriginal;
+  const setSecondaryInstructionDraft = showEnglishPrimary
+    ? setInstructionDraftOriginal
+    : setInstructionDraftEn;
 
   const parseMealTypes = (value: string) =>
     value
@@ -306,99 +357,61 @@ export default function RecipeDetailPage() {
                 Cancel
               </button>
             </div>
-            <div className="mt-4 grid gap-4 md:grid-cols-2">
-              <div className="space-y-3">
-                <label className="text-xs uppercase tracking-wide text-slate-400">Name</label>
-                <input
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
-                  value={draft.name}
-                  onChange={(event) => setDraft({ ...draft, name: event.target.value })}
-                />
-                <label className="text-xs uppercase tracking-wide text-slate-400">Name (original)</label>
-                <input
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
-                  value={draft.name_original ?? ""}
-                  onChange={(event) => setDraft({ ...draft, name_original: event.target.value })}
-                />
-                <label className="text-xs uppercase tracking-wide text-slate-400">Meal types (comma-separated)</label>
-                <input
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
-                  value={mealTypesInput}
-                  onChange={(event) => setMealTypesInput(event.target.value)}
-                />
-                <label className="text-xs uppercase tracking-wide text-slate-400">Servings</label>
-                <input
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
-                  value={draft.servings ?? ""}
-                  onChange={(event) =>
-                    setDraft({ ...draft, servings: Number(event.target.value) || undefined })
+            {draft && (
+              <RecipeFormBody
+                language={showEnglishPrimary ? "en" : "original"}
+                primaryLabel={primaryLabel}
+                secondaryLabel={secondaryLabel}
+                primaryNameValue={primaryNameValue}
+                setPrimaryName={setPrimaryName}
+                secondaryNameValue={secondaryNameValue}
+                setSecondaryName={setSecondaryName}
+                mealTypesValue={mealTypesInput}
+                setMealTypesValue={setMealTypesInput}
+                servingsValue={draft.servings ? String(draft.servings) : ""}
+                setServingsValue={(value) =>
+                  updateDraft({ servings: value ? Number(value) : undefined })
+                }
+                primaryInstructions={primaryInstructions}
+                setPrimaryInstructions={setPrimaryInstructions}
+                secondaryInstructions={secondaryInstructions}
+                setSecondaryInstructions={setSecondaryInstructions}
+                primaryIngredients={primaryIngredients}
+                setPrimaryIngredients={setPrimaryIngredients}
+                secondaryIngredients={secondaryIngredients}
+                setSecondaryIngredients={setSecondaryIngredients}
+                primaryIngredientDraft={primaryIngredientDraft}
+                setPrimaryIngredientDraft={setPrimaryIngredientDraft}
+                secondaryIngredientDraft={secondaryIngredientDraft}
+                setSecondaryIngredientDraft={setSecondaryIngredientDraft}
+                primaryInstructionDraft={primaryInstructionDraft}
+                setPrimaryInstructionDraft={setPrimaryInstructionDraft}
+                secondaryInstructionDraft={secondaryInstructionDraft}
+                setSecondaryInstructionDraft={setSecondaryInstructionDraft}
+                showOtherLanguage={showOtherLanguage}
+                onToggleOtherLanguage={() => setShowOtherLanguage((prev) => !prev)}
+                showNotes={showNotes}
+                onToggleNotes={() => setShowNotes((prev) => !prev)}
+                notesValue={draft.notes ?? ""}
+                setNotesValue={(value) => updateDraft({ notes: value })}
+                showSourceUrl={showSourceUrl}
+                onToggleSourceUrl={() => setShowSourceUrl((prev) => !prev)}
+                sourceUrlValue={draft.source_url ?? ""}
+                setSourceUrlValue={(value) => updateDraft({ source_url: value })}
+              />
+            )}
+            <div className="mt-4">
+              <label className="text-xs uppercase tracking-wide text-slate-400">Family feedback</label>
+              <div className="mt-2 rounded-2xl border border-slate-200 bg-white px-3 py-2">
+                <FamilyFeedback
+                  members={members}
+                  feedback={draft.family_feedback}
+                  onChange={(memberId, value) =>
+                    updateDraft({
+                      family_feedback: { ...(draft.family_feedback ?? {}), [memberId]: value },
+                    })
                   }
-                />
-                <label className="text-xs uppercase tracking-wide text-slate-400">Source URL</label>
-                <input
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
-                  value={draft.source_url ?? ""}
-                  onChange={(event) => setDraft({ ...draft, source_url: event.target.value })}
-                />
-                <label className="text-xs uppercase tracking-wide text-slate-400">Notes</label>
-                <textarea
-                  className="min-h-[120px] w-full rounded-xl border border-slate-200 px-3 py-2 text-xs"
-                  value={draft.notes ?? ""}
-                  onChange={(event) => setDraft({ ...draft, notes: event.target.value })}
-                />
-                <label className="text-xs uppercase tracking-wide text-slate-400">Family feedback</label>
-                <div className="rounded-2xl border border-slate-200 bg-white px-3 py-2">
-                  <FamilyFeedback
-                    members={members}
-                    feedback={draft.family_feedback}
-                    onChange={(memberId, value) =>
-                      setDraft({
-                        ...draft,
-                        family_feedback: { ...(draft.family_feedback ?? {}), [memberId]: value },
-                      })
-                    }
-                    compact
-                  />
-                </div>
-              </div>
-              <div className="space-y-3">
-                <label className="text-xs uppercase tracking-wide text-slate-400">Ingredients (en)</label>
-                <textarea
-                  className="min-h-[120px] w-full rounded-xl border border-slate-200 px-3 py-2 text-xs"
-                  value={formatIngredients(draft.ingredients)}
-                  onChange={(event) =>
-                    setDraft({ ...draft, ingredients: parseIngredients(event.target.value) })
-                  }
-                />
-                <label className="text-xs uppercase tracking-wide text-slate-400">Ingredients (original)</label>
-                <textarea
-                  className="min-h-[120px] w-full rounded-xl border border-slate-200 px-3 py-2 text-xs"
-                  value={formatIngredients(draft.ingredients_original)}
-                  onChange={(event) =>
-                    setDraft({ ...draft, ingredients_original: parseIngredients(event.target.value) })
-                  }
-                />
-              </div>
-            </div>
-            <div className="mt-4 grid gap-4 md:grid-cols-2">
-              <div>
-                <label className="text-xs uppercase tracking-wide text-slate-400">Instructions (en)</label>
-                <textarea
-                  className="min-h-[160px] w-full rounded-xl border border-slate-200 px-3 py-2 text-xs"
-                  value={formatInstructions(draft.instructions)}
-                  onChange={(event) =>
-                    setDraft({ ...draft, instructions: parseInstructions(event.target.value) })
-                  }
-                />
-              </div>
-              <div>
-                <label className="text-xs uppercase tracking-wide text-slate-400">Instructions (original)</label>
-                <textarea
-                  className="min-h-[160px] w-full rounded-xl border border-slate-200 px-3 py-2 text-xs"
-                  value={formatInstructions(draft.instructions_original)}
-                  onChange={(event) =>
-                    setDraft({ ...draft, instructions_original: parseInstructions(event.target.value) })
-                  }
+                  compact
                 />
               </div>
             </div>
