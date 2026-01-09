@@ -10,8 +10,9 @@ import { getFeedbackSummary } from "@/lib/feedback";
 import { BLUR_DATA_URL } from "@/lib/image";
 import { Filter, Upload } from "lucide-react";
 import ActionMenu from "@/components/ActionMenu";
-import ManualRecipeModal from "@/components/ManualRecipeModal";
+import ManualRecipeModal, { ManualRecipePrefill } from "@/components/ManualRecipeModal";
 import RecipeImportModal, { ImportedRecipe } from "@/components/RecipeImportModal";
+import RecipeSearchModal from "@/components/RecipeSearchModal";
 import { registerOptimisticRecipe } from "@/lib/optimistic";
 import { useLanguage } from "@/components/LanguageProvider";
 
@@ -53,6 +54,19 @@ function RecipesPageClient() {
   const [filters, setFilters] = useState<string[]>([]);
   const [showImport, setShowImport] = useState(false);
   const [showManual, setShowManual] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
+  const [manualPrefill, setManualPrefill] = useState<ManualRecipePrefill | null>(null);
+  const [manualFromSearch, setManualFromSearch] = useState(false);
+  const [manualLoading, setManualLoading] = useState(false);
+  const [manualLoadingModel, setManualLoadingModel] = useState<string | null>(null);
+  const [manualNotice, setManualNotice] = useState("");
+  const [manualError, setManualError] = useState("");
+  const [manualSourceUrl, setManualSourceUrl] = useState<string | null>(null);
+  const [manualThumbnailUrl, setManualThumbnailUrl] = useState<string | null>(null);
+
+  const PREFILL_CACHE_KEY = "recipe_prefill_cache";
+  const PREFILL_TTL_MS = 1000 * 60 * 60 * 6;
+  const PREFILL_MODELS = ["gemini-2.5-flash-lite", "gemini-2.5-flash", "gemini-3-flash"];
 
   useEffect(() => {
     if (searchParams?.get("import") === "1") {
@@ -89,6 +103,8 @@ function RecipesPageClient() {
       },
       { revalidate: false },
     );
+    setManualFromSearch(false);
+    setManualPrefill(null);
   };
 
   const handleImportedRecipe = async (recipe: ImportedRecipe) => {
@@ -110,6 +126,133 @@ function RecipesPageClient() {
     );
   };
 
+  const loadPrefillCache = (sourceUrl: string) => {
+    if (typeof sessionStorage === "undefined") return null;
+    try {
+      const stored = sessionStorage.getItem(PREFILL_CACHE_KEY);
+      if (!stored) return null;
+      const parsed = JSON.parse(stored);
+      const entry = parsed?.[sourceUrl];
+      if (!entry || !entry.prefill || !entry.expiresAt) return null;
+      if (Date.now() > entry.expiresAt) return null;
+      return entry;
+    } catch {
+      return null;
+    }
+  };
+
+  const savePrefillCache = (sourceUrl: string, data: { prefill: ManualRecipePrefill; model?: string }) => {
+    if (typeof sessionStorage === "undefined") return;
+    try {
+      const stored = sessionStorage.getItem(PREFILL_CACHE_KEY);
+      const parsed = stored ? JSON.parse(stored) : {};
+      parsed[sourceUrl] = {
+        prefill: data.prefill,
+        model: data.model ?? null,
+        expiresAt: Date.now() + PREFILL_TTL_MS,
+      };
+      sessionStorage.setItem(PREFILL_CACHE_KEY, JSON.stringify(parsed));
+    } catch {
+      // Ignore cache write errors.
+    }
+  };
+
+  const runPrefill = async (sourceUrl: string, thumbnailUrl: string | null, force: boolean) => {
+    setManualLoading(true);
+    setManualError("");
+    setManualNotice("");
+    setManualLoadingModel(null);
+    if (!force) {
+      const cached = loadPrefillCache(sourceUrl);
+      if (cached?.prefill) {
+        setManualPrefill(cached.prefill as ManualRecipePrefill);
+        setManualNotice(
+          cached.model
+            ? `Using cached auto-fill result (${cached.model}).`
+            : "Using cached auto-fill result.",
+        );
+        setManualLoadingModel(cached.model ?? null);
+        setManualLoading(false);
+        return;
+      }
+    }
+    let lastError = "";
+    for (const model of PREFILL_MODELS) {
+      setManualLoadingModel(model);
+      try {
+        const response = await fetch("/api/recipes/prefill", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            source_url: sourceUrl,
+            thumbnail_url: thumbnailUrl,
+            force,
+            model,
+          }),
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(payload.error ?? "Auto-fill failed.");
+        }
+        if (payload.prefill) {
+          setManualPrefill(payload.prefill as ManualRecipePrefill);
+          savePrefillCache(sourceUrl, { prefill: payload.prefill, model: payload.model ?? model });
+        }
+        if (payload.cached) {
+          setManualNotice(
+            payload.model
+              ? `Using cached auto-fill result (${payload.model}).`
+              : "Using cached auto-fill result.",
+          );
+        } else if (payload.model || model) {
+          setManualNotice(`Auto-fill completed with ${payload.model ?? model}.`);
+        }
+        setManualLoading(false);
+        return;
+      } catch (error) {
+        lastError = (error as Error).message ?? "Auto-fill failed.";
+        continue;
+      }
+    }
+    if (lastError.toLowerCase().includes("quota")) {
+      setManualNotice("Auto-fill unavailable: Gemini quota exceeded. Please check billing/quota.");
+    } else {
+      setManualError(lastError || "Auto-fill failed.");
+    }
+    setManualLoading(false);
+  };
+
+  const handleSearchCandidate = (candidate: {
+    title: string;
+    source_url: string;
+    servings?: number | string | null;
+    ingredients?: string[];
+    instructions?: string[];
+    source_host?: string;
+    thumbnail_url?: string | null;
+  }) => {
+    setShowSearch(false);
+    setManualFromSearch(true);
+    setManualError("");
+    setManualNotice("");
+    setManualLoading(true);
+    setManualSourceUrl(candidate.source_url);
+    setManualThumbnailUrl(candidate.thumbnail_url ?? null);
+    setManualPrefill({
+      name: candidate.title,
+      name_original: candidate.title,
+      servings: candidate.servings ?? "",
+      source_url: candidate.source_url,
+      thumbnail_url: candidate.thumbnail_url ?? null,
+      ingredients_text: candidate.ingredients?.join("\n") ?? "",
+      ingredients_original_text: candidate.ingredients?.join("\n") ?? "",
+      instructions_text: candidate.instructions?.join("\n") ?? "",
+      instructions_original_text: candidate.instructions?.join("\n") ?? "",
+    });
+    setShowManual(true);
+    void runPrefill(candidate.source_url, candidate.thumbnail_url ?? null, false);
+  };
+
   return (
     <div className="space-y-6">
       <section className="sticky top-[calc(var(--header-height)+0.5rem)] z-20 scroll-mt-[calc(var(--header-height)+2rem)] rounded-3xl border border-white/70 bg-white/95 p-4 text-xs shadow-sm backdrop-blur">
@@ -124,9 +267,25 @@ function RecipesPageClient() {
           <ActionMenu>
             <button
               className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 hover:text-slate-900"
-              onClick={() => setShowManual(true)}
+              onClick={() => {
+                setManualPrefill(null);
+                setManualFromSearch(false);
+                setManualError("");
+                setManualNotice("");
+                setManualLoading(false);
+                setManualLoadingModel(null);
+                setManualSourceUrl(null);
+                setManualThumbnailUrl(null);
+                setShowManual(true);
+              }}
             >
-              Add recipe
+              Add recipe (manual)
+            </button>
+            <button
+              className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 hover:text-slate-900"
+              onClick={() => setShowSearch(true)}
+            >
+              Search & add
             </button>
             <button
               className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 hover:text-slate-900"
@@ -247,8 +406,50 @@ function RecipesPageClient() {
       {showManual && (
         <ManualRecipeModal
           open={showManual}
-          onClose={() => setShowManual(false)}
+          onClose={() => {
+            setShowManual(false);
+            setManualFromSearch(false);
+            setManualPrefill(null);
+            setManualLoading(false);
+            setManualLoadingModel(null);
+            setManualError("");
+            setManualNotice("");
+            setManualSourceUrl(null);
+            setManualThumbnailUrl(null);
+          }}
           onCreated={handleManualCreated}
+          prefill={manualPrefill}
+          backLabel={manualFromSearch ? "Back to search results" : "Back"}
+          onBack={
+            manualFromSearch
+              ? () => {
+                  setShowManual(false);
+                  setShowSearch(true);
+                }
+              : undefined
+          }
+          loading={manualLoading}
+          loadingLabel="Auto-filling from YouTube with"
+          loadingModel={manualLoadingModel ?? undefined}
+          errorMessage={manualError}
+          noticeMessage={manualNotice}
+          onRetryPrefill={
+            manualSourceUrl
+              ? () => {
+                  void runPrefill(manualSourceUrl, manualThumbnailUrl, true);
+                }
+              : undefined
+          }
+          retryLabel="Retry auto-fill"
+        />
+      )}
+
+      {showSearch && (
+        <RecipeSearchModal
+          open={showSearch}
+          onClose={() => setShowSearch(false)}
+          onUseCandidate={handleSearchCandidate}
+          initialQuery=""
         />
       )}
 
