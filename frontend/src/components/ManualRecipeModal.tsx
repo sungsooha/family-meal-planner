@@ -2,24 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { X } from "lucide-react";
+import type { CreatedRecipe } from "@/lib/types";
 import { useLanguage } from "./LanguageProvider";
 
 type Ingredient = { name: string; quantity: number | string; unit: string };
 
-export type ManualRecipePayload = {
-  recipe_id: string;
-  name: string;
-  name_original?: string;
-  meal_types?: string[];
-  servings?: number;
-  source_url?: string | null;
-  thumbnail_url?: string | null;
-  notes?: string;
-  ingredients?: Ingredient[];
-  ingredients_original?: Ingredient[];
-  instructions?: string[];
-  instructions_original?: string[];
-};
+export type ManualRecipePayload = CreatedRecipe;
 
 export type ManualRecipePrefill = {
   name?: string;
@@ -37,7 +25,7 @@ export type ManualRecipePrefill = {
 type Props = {
   open: boolean;
   onClose: () => void;
-  onCreated?: (recipe: ManualRecipePayload) => void | Promise<void>;
+  onCreated?: (recipe: CreatedRecipe) => void | Promise<void>;
   prefill?: ManualRecipePrefill | null;
   onBack?: () => void;
   backLabel?: string;

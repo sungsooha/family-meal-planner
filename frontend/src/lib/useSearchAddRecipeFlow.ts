@@ -3,6 +3,8 @@
 import { useCallback, useState } from "react";
 import { useRecipePrefill, PrefillCandidate } from "@/lib/useRecipePrefill";
 
+export type { PrefillCandidate };
+
 export function useSearchAddRecipeFlow(openManual: () => void) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [manualFromSearch, setManualFromSearch] = useState(false);
