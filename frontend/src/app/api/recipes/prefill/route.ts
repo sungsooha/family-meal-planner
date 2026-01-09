@@ -91,6 +91,7 @@ function buildPrompt(input: { title: string; description: string; topComment: st
     "Return ONLY valid JSON with keys:",
     "name, name_original, meal_types, servings, ingredients, ingredients_original, instructions, instructions_original.",
     "- name is English; name_original is the original language title.",
+    "- Keep name and name_original concise (<= 80 characters). Drop hashtags or extra promo text.",
     "- meal_types is an array (e.g. breakfast, lunch, dinner, snack). Always infer at least one meal type from the recipe and context even if it is not explicitly stated.",
     "- servings is a number if possible.",
     "- ingredients/ingredients_original are arrays of {name, quantity, unit}.",
