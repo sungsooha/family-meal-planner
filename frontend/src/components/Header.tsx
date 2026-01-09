@@ -6,30 +6,18 @@ import { useEffect, useRef, useState } from "react";
 import { History, Search } from "lucide-react";
 import { useLanguage } from "./LanguageProvider";
 import { getSupabaseBrowser } from "@/lib/supabase";
-import RecipeSearchModal from "./RecipeSearchModal";
-import ManualRecipeModal, { ManualRecipePrefill } from "./ManualRecipeModal";
+import RecipeSearchAddModals from "./RecipeSearchAddModals";
 import { useSWRConfig } from "swr";
 import { registerOptimisticRecipe } from "@/lib/optimistic";
-
-const PREFILL_CACHE_KEY = "recipe_prefill_cache";
-const PREFILL_TTL_MS = 1000 * 60 * 60 * 6;
-const PREFILL_MODELS = ["gemini-2.5-flash-lite", "gemini-2.5-flash", "gemini-3-flash"];
+import { useSearchAddRecipeFlow } from "@/lib/useSearchAddRecipeFlow";
 
 export default function Header() {
   const { language, setLanguage } = useLanguage();
   const pathname = usePathname();
   const [scrolled, setScrolled] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [manualOpen, setManualOpen] = useState(false);
-  const [manualPrefill, setManualPrefill] = useState<ManualRecipePrefill | null>(null);
-  const [manualFromSearch, setManualFromSearch] = useState(false);
-  const [manualLoading, setManualLoading] = useState(false);
-  const [manualError, setManualError] = useState("");
-  const [manualNotice, setManualNotice] = useState("");
-  const [manualSourceUrl, setManualSourceUrl] = useState<string | null>(null);
-  const [manualThumbnailUrl, setManualThumbnailUrl] = useState<string | null>(null);
-  const [manualLoadingModel, setManualLoadingModel] = useState<string | null>(null);
+  const searchFlow = useSearchAddRecipeFlow(() => setManualOpen(true));
   const { mutate } = useSWRConfig();
   const headerRef = useRef<HTMLElement | null>(null);
   useEffect(() => {
@@ -45,135 +33,9 @@ export default function Header() {
     registerOptimisticRecipe(recipe);
     mutate("/api/recipes?view=summary");
     mutate("/api/recipes");
-    setManualFromSearch(false);
+    searchFlow.reset();
   };
 
-  const handleUseCandidate = (candidate: {
-    title: string;
-    source_url: string;
-    servings?: number | string | null;
-    ingredients?: string[];
-    instructions?: string[];
-    source_host?: string;
-    thumbnail_url?: string | null;
-  }) => {
-    setSearchOpen(false);
-    setManualFromSearch(true);
-    setManualError("");
-    setManualNotice("");
-    setManualLoading(true);
-    setManualSourceUrl(candidate.source_url);
-    setManualThumbnailUrl(candidate.thumbnail_url ?? null);
-    setManualPrefill({
-      name: candidate.title,
-      name_original: candidate.title,
-      servings: candidate.servings ?? "",
-      source_url: candidate.source_url,
-      thumbnail_url: candidate.thumbnail_url ?? null,
-      ingredients_text: candidate.ingredients?.join("\n") ?? "",
-      ingredients_original_text: candidate.ingredients?.join("\n") ?? "",
-      instructions_text: candidate.instructions?.join("\n") ?? "",
-      instructions_original_text: candidate.instructions?.join("\n") ?? "",
-    });
-    setManualOpen(true);
-    void runPrefill(candidate.source_url, candidate.thumbnail_url ?? null, false);
-  };
-
-  const loadPrefillCache = (sourceUrl: string) => {
-    if (typeof sessionStorage === "undefined") return null;
-    try {
-      const stored = sessionStorage.getItem(PREFILL_CACHE_KEY);
-      if (!stored) return null;
-      const parsed = JSON.parse(stored);
-      const entry = parsed?.[sourceUrl];
-      if (!entry || !entry.prefill || !entry.expiresAt) return null;
-      if (Date.now() > entry.expiresAt) return null;
-      return entry;
-    } catch {
-      return null;
-    }
-  };
-
-  const savePrefillCache = (sourceUrl: string, data: { prefill: ManualRecipePrefill; model?: string }) => {
-    if (typeof sessionStorage === "undefined") return;
-    try {
-      const stored = sessionStorage.getItem(PREFILL_CACHE_KEY);
-      const parsed = stored ? JSON.parse(stored) : {};
-      parsed[sourceUrl] = {
-        prefill: data.prefill,
-        model: data.model ?? null,
-        expiresAt: Date.now() + PREFILL_TTL_MS,
-      };
-      sessionStorage.setItem(PREFILL_CACHE_KEY, JSON.stringify(parsed));
-    } catch {
-      // Ignore cache write errors.
-    }
-  };
-
-  const runPrefill = async (sourceUrl: string, thumbnailUrl: string | null, force: boolean) => {
-    setManualLoading(true);
-    setManualError("");
-    setManualNotice("");
-    setManualLoadingModel(null);
-    if (!force) {
-      const cached = loadPrefillCache(sourceUrl);
-      if (cached?.prefill) {
-        setManualPrefill(cached.prefill as ManualRecipePrefill);
-        setManualNotice(
-          cached.model
-            ? `Using cached auto-fill result (${cached.model}).`
-            : "Using cached auto-fill result.",
-        );
-        setManualLoadingModel(cached.model ?? null);
-        setManualLoading(false);
-        return;
-      }
-    }
-    let lastError = "";
-    for (const model of PREFILL_MODELS) {
-      setManualLoadingModel(model);
-      try {
-        const response = await fetch("/api/recipes/prefill", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            source_url: sourceUrl,
-            thumbnail_url: thumbnailUrl,
-            force,
-            model,
-          }),
-        });
-        const payload = await response.json().catch(() => ({}));
-        if (!response.ok) {
-          throw new Error(payload.error ?? "Auto-fill failed.");
-        }
-        if (payload.prefill) {
-          setManualPrefill(payload.prefill as ManualRecipePrefill);
-          savePrefillCache(sourceUrl, { prefill: payload.prefill, model: payload.model ?? model });
-        }
-        if (payload.cached) {
-          setManualNotice(
-            payload.model
-              ? `Using cached auto-fill result (${payload.model}).`
-              : "Using cached auto-fill result.",
-          );
-        } else if (payload.model || model) {
-          setManualNotice(`Auto-fill completed with ${payload.model ?? model}.`);
-        }
-        setManualLoading(false);
-        return;
-      } catch (error) {
-        lastError = (error as Error).message ?? "Auto-fill failed.";
-        continue;
-      }
-    }
-    if (lastError.toLowerCase().includes("quota")) {
-      setManualNotice("Auto-fill unavailable: Gemini quota exceeded. Please check billing/quota.");
-    } else {
-      setManualError(lastError || "Auto-fill failed.");
-    }
-    setManualLoading(false);
-  };
 
   useEffect(() => {
     const updateHeaderHeight = () => {
@@ -281,7 +143,7 @@ export default function Header() {
               onSubmit={(event) => {
                 event.preventDefault();
                 if (!searchQuery.trim()) return;
-                setSearchOpen(true);
+                searchFlow.openSearch();
               }}
             >
               <div className="ml-auto flex w-full max-w-sm items-center gap-2">
@@ -297,7 +159,7 @@ export default function Header() {
                 <button
                   type="button"
                   className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white/80 text-slate-500 shadow-sm hover:text-slate-700"
-                  onClick={() => setSearchOpen(true)}
+                  onClick={() => searchFlow.openSearch()}
                   aria-label="Open last search"
                   title="Open last search"
                 >
@@ -308,49 +170,12 @@ export default function Header() {
           </div>
         </div>
       </div>
-      <RecipeSearchModal
-        open={searchOpen}
-        onClose={() => setSearchOpen(false)}
-        onUseCandidate={handleUseCandidate}
-        initialQuery={searchQuery}
-      />
-      <ManualRecipeModal
-        open={manualOpen}
-        onClose={() => {
-          setManualOpen(false);
-          setManualFromSearch(false);
-          setManualLoading(false);
-          setManualError("");
-          setManualNotice("");
-          setManualSourceUrl(null);
-          setManualThumbnailUrl(null);
-          setManualLoadingModel(null);
-        }}
-        onCreated={handleManualCreated}
-        prefill={manualPrefill}
-        backLabel="Back to search results"
-        onBack={
-          manualFromSearch
-            ? () => {
-                setManualOpen(false);
-                setManualFromSearch(false);
-                setSearchOpen(true);
-              }
-            : undefined
-        }
-        loading={manualLoading}
-        loadingLabel="Auto-filling from YouTube with"
-        loadingModel={manualLoadingModel ?? undefined}
-        errorMessage={manualError}
-        noticeMessage={manualNotice}
-        onRetryPrefill={
-          manualSourceUrl
-            ? () => {
-                void runPrefill(manualSourceUrl, manualThumbnailUrl, true);
-              }
-            : undefined
-        }
-        retryLabel="Retry auto-fill"
+      <RecipeSearchAddModals
+        manualOpen={manualOpen}
+        onManualClose={() => setManualOpen(false)}
+        onManualCreated={handleManualCreated}
+        searchFlow={searchFlow}
+        searchInitialQuery={searchQuery}
       />
     </header>
   );

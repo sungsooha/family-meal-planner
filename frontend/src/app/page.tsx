@@ -25,10 +25,10 @@ import {
 import { useLanguage } from "@/components/LanguageProvider";
 import ActionMenu from "@/components/ActionMenu";
 import FamilyFeedback from "@/components/FamilyFeedback";
-import ManualRecipeModal, { ManualRecipePrefill } from "@/components/ManualRecipeModal";
 import RecipeImportModal, { ImportedRecipe } from "@/components/RecipeImportModal";
-import RecipeSearchModal from "@/components/RecipeSearchModal";
+import RecipeSearchAddModals from "@/components/RecipeSearchAddModals";
 import { registerOptimisticRecipe } from "@/lib/optimistic";
+import { useSearchAddRecipeFlow } from "@/lib/useSearchAddRecipeFlow";
 
 type Ingredient = { name: string; quantity: number | string; unit: string };
 type Recipe = {
@@ -111,15 +111,7 @@ export default function WeeklyPlanPage() {
   const [showImport, setShowImport] = useState(false);
   const [showManual, setShowManual] = useState(false);
   const [manualContext, setManualContext] = useState<{ date: string; meal: string } | null>(null);
-  const [manualPrefill, setManualPrefill] = useState<ManualRecipePrefill | null>(null);
-  const [manualFromSearch, setManualFromSearch] = useState(false);
-  const [manualLoading, setManualLoading] = useState(false);
-  const [manualLoadingModel, setManualLoadingModel] = useState<string | null>(null);
-  const [manualNotice, setManualNotice] = useState("");
-  const [manualError, setManualError] = useState("");
-  const [manualSourceUrl, setManualSourceUrl] = useState<string | null>(null);
-  const [manualThumbnailUrl, setManualThumbnailUrl] = useState<string | null>(null);
-  const [planSearchOpen, setPlanSearchOpen] = useState(false);
+  const searchFlow = useSearchAddRecipeFlow(() => setShowManual(true));
   const [activeRecipeId, setActiveRecipeId] = useState<string | null>(null);
   const [activeRecipe, setActiveRecipe] = useState<Recipe | null>(null);
   const [activeMealContext, setActiveMealContext] = useState<{ date: string; meal: string } | null>(null);
@@ -128,10 +120,7 @@ export default function WeeklyPlanPage() {
   const [collapsePast, setCollapsePast] = useState(true);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const activeRecipeRef = useRef<Recipe | null>(null);
-
-  const PREFILL_CACHE_KEY = "recipe_prefill_cache";
-  const PREFILL_TTL_MS = 1000 * 60 * 60 * 6;
-  const PREFILL_MODELS = ["gemini-2.5-flash-lite", "gemini-2.5-flash", "gemini-3-flash"];
+  const prefill = searchFlow.prefill;
   const feedbackVersionRef = useRef(0);
   const feedbackSavingRef = useRef(false);
   const feedbackTimersRef = useRef<Map<string, number>>(new Map());
@@ -462,136 +451,9 @@ export default function WeeklyPlanPage() {
       await handleAssign(recipe.recipe_id, manualContext);
       setManualContext(null);
     }
-    setManualFromSearch(false);
-    setManualPrefill(null);
+    searchFlow.reset();
   };
 
-  const loadPrefillCache = (sourceUrl: string) => {
-    if (typeof sessionStorage === "undefined") return null;
-    try {
-      const stored = sessionStorage.getItem(PREFILL_CACHE_KEY);
-      if (!stored) return null;
-      const parsed = JSON.parse(stored);
-      const entry = parsed?.[sourceUrl];
-      if (!entry || !entry.prefill || !entry.expiresAt) return null;
-      if (Date.now() > entry.expiresAt) return null;
-      return entry;
-    } catch {
-      return null;
-    }
-  };
-
-  const savePrefillCache = (sourceUrl: string, data: { prefill: ManualRecipePrefill; model?: string }) => {
-    if (typeof sessionStorage === "undefined") return;
-    try {
-      const stored = sessionStorage.getItem(PREFILL_CACHE_KEY);
-      const parsed = stored ? JSON.parse(stored) : {};
-      parsed[sourceUrl] = {
-        prefill: data.prefill,
-        model: data.model ?? null,
-        expiresAt: Date.now() + PREFILL_TTL_MS,
-      };
-      sessionStorage.setItem(PREFILL_CACHE_KEY, JSON.stringify(parsed));
-    } catch {
-      // Ignore cache write errors.
-    }
-  };
-
-  const runPrefill = async (sourceUrl: string, thumbnailUrl: string | null, force: boolean) => {
-    setManualLoading(true);
-    setManualError("");
-    setManualNotice("");
-    setManualLoadingModel(null);
-    if (!force) {
-      const cached = loadPrefillCache(sourceUrl);
-      if (cached?.prefill) {
-        setManualPrefill(cached.prefill as ManualRecipePrefill);
-        setManualNotice(
-          cached.model
-            ? `Using cached auto-fill result (${cached.model}).`
-            : "Using cached auto-fill result.",
-        );
-        setManualLoadingModel(cached.model ?? null);
-        setManualLoading(false);
-        return;
-      }
-    }
-    let lastError = "";
-    for (const model of PREFILL_MODELS) {
-      setManualLoadingModel(model);
-      try {
-        const response = await fetch("/api/recipes/prefill", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            source_url: sourceUrl,
-            thumbnail_url: thumbnailUrl,
-            force,
-            model,
-          }),
-        });
-        const payload = await response.json().catch(() => ({}));
-        if (!response.ok) {
-          throw new Error(payload.error ?? "Auto-fill failed.");
-        }
-        if (payload.prefill) {
-          setManualPrefill(payload.prefill as ManualRecipePrefill);
-          savePrefillCache(sourceUrl, { prefill: payload.prefill, model: payload.model ?? model });
-        }
-        if (payload.cached) {
-          setManualNotice(
-            payload.model
-              ? `Using cached auto-fill result (${payload.model}).`
-              : "Using cached auto-fill result.",
-          );
-        } else if (payload.model || model) {
-          setManualNotice(`Auto-fill completed with ${payload.model ?? model}.`);
-        }
-        setManualLoading(false);
-        return;
-      } catch (error) {
-        lastError = (error as Error).message ?? "Auto-fill failed.";
-        continue;
-      }
-    }
-    if (lastError.toLowerCase().includes("quota")) {
-      setManualNotice("Auto-fill unavailable: Gemini quota exceeded. Please check billing/quota.");
-    } else {
-      setManualError(lastError || "Auto-fill failed.");
-    }
-    setManualLoading(false);
-  };
-
-  const handlePlanSearchCandidate = (candidate: {
-    title: string;
-    source_url: string;
-    servings?: number | string | null;
-    ingredients?: string[];
-    instructions?: string[];
-    source_host?: string;
-    thumbnail_url?: string | null;
-  }) => {
-    setPlanSearchOpen(false);
-    setManualFromSearch(true);
-    setManualError("");
-    setManualNotice("");
-    setManualLoading(true);
-    setManualSourceUrl(candidate.source_url);
-    setManualThumbnailUrl(candidate.thumbnail_url ?? null);
-    setManualPrefill({
-      name: candidate.title,
-      name_original: candidate.title,
-      servings: candidate.servings ?? "",
-      source_url: candidate.source_url,
-      thumbnail_url: candidate.thumbnail_url ?? null,
-      ingredients_text: candidate.ingredients?.join("\n") ?? "",
-      ingredients_original_text: candidate.ingredients?.join("\n") ?? "",
-      instructions_text: candidate.instructions?.join("\n") ?? "",
-      instructions_original_text: candidate.instructions?.join("\n") ?? "",
-    });
-    setShowManual(true);
-    void runPrefill(candidate.source_url, candidate.thumbnail_url ?? null, false);
-  };
 
   const handleImportedRecipe = async (recipe: ImportedRecipe) => {
     registerOptimisticRecipe(recipe);
@@ -1241,7 +1103,7 @@ export default function WeeklyPlanPage() {
                 className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left text-sm font-medium text-slate-700 hover:border-slate-300"
                 onClick={() => {
                   setManualContext(addMenu);
-                  setPlanSearchOpen(true);
+                  searchFlow.openSearch();
                   setAddMenu(null);
                 }}
               >
@@ -1252,7 +1114,7 @@ export default function WeeklyPlanPage() {
                 onClick={() => {
                   setAddMenu(null);
                   setManualContext(addMenu);
-                  setManualPrefill(null);
+                  searchFlow.reset();
                   setShowManual(true);
                 }}
               >
@@ -1280,61 +1142,24 @@ export default function WeeklyPlanPage() {
         />
       )}
 
-      {showManual && (
-        <ManualRecipeModal
-          open={showManual}
-          onClose={() => {
-            setShowManual(false);
-            setManualContext(null);
-            setManualFromSearch(false);
-            setManualPrefill(null);
-            setManualLoading(false);
-            setManualError("");
-            setManualNotice("");
-            setManualSourceUrl(null);
-            setManualThumbnailUrl(null);
-            setManualLoadingModel(null);
-          }}
-          onCreated={handleManualCreated}
-          backLabel={manualFromSearch ? "Back to search results" : "Back to add menu"}
-          onBack={
-            manualFromSearch
-              ? () => {
-                  setShowManual(false);
-                  setPlanSearchOpen(true);
-                }
-              : manualContext
-                ? () => {
-                    setShowManual(false);
-                    setAddMenu(manualContext);
-                  }
-                : undefined
-          }
-          prefill={manualPrefill}
-          loading={manualLoading}
-          loadingLabel="Auto-filling from YouTube with"
-          loadingModel={manualLoadingModel ?? undefined}
-          errorMessage={manualError}
-          noticeMessage={manualNotice}
-          onRetryPrefill={
-            manualSourceUrl
-              ? () => {
-                  void runPrefill(manualSourceUrl, manualThumbnailUrl, true);
-                }
-              : undefined
-          }
-          retryLabel="Retry auto-fill"
-        />
-      )}
-
-      {planSearchOpen && (
-        <RecipeSearchModal
-          open={planSearchOpen}
-          onClose={() => setPlanSearchOpen(false)}
-          onUseCandidate={handlePlanSearchCandidate}
-          initialQuery=""
-        />
-      )}
+      <RecipeSearchAddModals
+        manualOpen={showManual}
+        onManualClose={() => {
+          setShowManual(false);
+          setManualContext(null);
+        }}
+        onManualCreated={handleManualCreated}
+        searchFlow={searchFlow}
+        defaultBackLabel="Back to add menu"
+        onDefaultBack={
+          manualContext
+            ? () => {
+                setShowManual(false);
+                setAddMenu(manualContext);
+              }
+            : undefined
+        }
+      />
 
       {activeRecipe && (
         <>
@@ -1475,6 +1300,3 @@ export default function WeeklyPlanPage() {
     </div>
   );
 }
-  const PREFILL_CACHE_KEY = "recipe_prefill_cache";
-  const PREFILL_TTL_MS = 1000 * 60 * 60 * 6;
-  const PREFILL_MODELS = ["gemini-2.5-flash-lite", "gemini-2.5-flash", "gemini-3-flash"];
