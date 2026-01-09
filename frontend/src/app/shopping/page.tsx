@@ -19,6 +19,7 @@ import { useLanguage } from "@/components/LanguageProvider";
 import { useToast } from "@/components/ToastProvider";
 import ActionMenu from "@/components/ActionMenu";
 import type { Recipe } from "@/lib/types";
+import { postAction } from "@/lib/api";
 
 type ShoppingItem = {
   name: string;
@@ -44,14 +45,8 @@ const formatLocalDate = (date: Date) => {
   return `${year}-${month}-${day}`;
 };
 
-async function postAction(payload: Record<string, unknown>) {
-  const response = await fetch("/api/shopping", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-  if (!response.ok) throw new Error("Shopping update failed");
-  return response.json();
+async function postActionApi(payload: Record<string, unknown>) {
+  return postAction("/api/shopping", payload);
 }
 
 export default function ShoppingPage() {
@@ -111,18 +106,18 @@ export default function ShoppingPage() {
   }, [shoppingData]);
 
   const handleAdd = async (item: ShoppingItem) => {
-    await postAction({ action: "add", key: item.key, name: item.name, unit: item.unit, quantity: item.quantity, lang });
+    await postActionApi({ action: "add", key: item.key, name: item.name, unit: item.unit, quantity: item.quantity, lang });
     await mutateShopping();
   };
 
   const handleRemove = async (item: ShoppingItem) => {
-    await postAction({ action: "remove", key: item.key, lang });
+    await postActionApi({ action: "remove", key: item.key, lang });
     await mutateShopping();
   };
 
   const handleAddManual = async () => {
     if (!manualName.trim()) return;
-    await postAction({
+    await postActionApi({
       action: "add-manual",
       name: manualName.trim(),
       quantity: manualQuantity.trim(),
@@ -213,7 +208,7 @@ export default function ShoppingPage() {
 
   const saveEdit = async () => {
     if (!editingItem) return;
-    await postAction({ action: "update", key: editingItem.key, quantity: editingQuantity, lang });
+    await postActionApi({ action: "update", key: editingItem.key, quantity: editingQuantity, lang });
     setEditingItem(null);
     await mutateShopping();
   };
