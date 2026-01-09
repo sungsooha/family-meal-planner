@@ -9,23 +9,7 @@ import FamilyFeedback from "@/components/FamilyFeedback";
 import { ArrowLeft, ListChecks, ShoppingBasket } from "lucide-react";
 import { useLanguage } from "@/components/LanguageProvider";
 import { useToast } from "@/components/ToastProvider";
-
-type Ingredient = { name: string; quantity: number | string; unit: string };
-type Recipe = {
-  recipe_id: string;
-  name: string;
-  name_original?: string;
-  meal_types?: string[];
-  servings?: number;
-  source_url?: string | null;
-  notes?: string;
-  family_feedback_score?: number;
-  family_feedback?: Record<string, number>;
-  ingredients?: Ingredient[];
-  ingredients_original?: Ingredient[];
-  instructions?: string[];
-  instructions_original?: string[];
-};
+import type { Recipe, Ingredient } from "@/lib/types";
 
 type FamilyMember = {
   id: string;

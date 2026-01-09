@@ -7,10 +7,16 @@ export type CreatedRecipe = {
   source_url?: string | null;
   thumbnail_url?: string | null;
   notes?: string;
-  ingredients?: Array<{ name: string; quantity: number | string; unit: string }>;
-  ingredients_original?: Array<{ name: string; quantity: number | string; unit: string }>;
+  ingredients?: Ingredient[];
+  ingredients_original?: Ingredient[];
   instructions?: string[];
   instructions_original?: string[];
+};
+
+export type Ingredient = {
+  name: string;
+  quantity: number | string;
+  unit: string;
 };
 
 export type Recipe = CreatedRecipe & {

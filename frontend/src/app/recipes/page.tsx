@@ -15,10 +15,9 @@ import RecipeSearchAddModals from "@/components/RecipeSearchAddModals";
 import SearchAddActionButton from "@/components/SearchAddActionButton";
 import { registerOptimisticRecipe } from "@/lib/optimistic";
 import { useLanguage } from "@/components/LanguageProvider";
-import type { CreatedRecipe, Recipe } from "@/lib/types";
+import type { CreatedRecipe, Recipe, Ingredient } from "@/lib/types";
 import { useSearchAddRecipeFlow } from "@/lib/useSearchAddRecipeFlow";
 
-type Ingredient = { name: string; quantity: number | string; unit: string };
 
 const MEAL_TYPES = ["breakfast", "lunch", "dinner", "snack"] as const;
 

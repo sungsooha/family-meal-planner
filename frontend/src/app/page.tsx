@@ -29,11 +29,11 @@ import RecipeImportModal, { ImportedRecipe } from "@/components/RecipeImportModa
 import RecipeSearchAddModals from "@/components/RecipeSearchAddModals";
 import SearchAddActionButton from "@/components/SearchAddActionButton";
 import { registerOptimisticRecipe } from "@/lib/optimistic";
-import type { CreatedRecipe, Recipe } from "@/lib/types";
+import type { CreatedRecipe, Recipe, Ingredient } from "@/lib/types";
 import { MEAL_BADGES, MEAL_LABELS, MEAL_SHORT } from "@/lib/meal";
+import { postJson } from "@/lib/api";
 import { useSearchAddRecipeFlow } from "@/lib/useSearchAddRecipeFlow";
 
-type Ingredient = { name: string; quantity: number | string; unit: string };
 type FamilyMember = {
   id: string;
   label: string;
@@ -58,16 +58,6 @@ const formatLocalDate = (date: Date) => {
 };
 
 // meal labels/badges moved to lib/meal.ts
-
-async function postJson<T>(url: string, payload: unknown): Promise<T> {
-  const response = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-  if (!response.ok) throw new Error("Request failed");
-  return response.json() as Promise<T>;
-}
 
 export default function WeeklyPlanPage() {
   const [plan, setPlan] = useState<WeeklyPlan | null>(null);

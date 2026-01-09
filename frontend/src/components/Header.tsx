@@ -15,7 +15,6 @@ export default function Header() {
   const { language, setLanguage } = useLanguage();
   const pathname = usePathname();
   const [scrolled, setScrolled] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
   const [manualOpen, setManualOpen] = useState(false);
   const searchFlow = useSearchAddRecipeFlow(() => setManualOpen(true));
   const { mutate } = useSWRConfig();
@@ -142,7 +141,7 @@ export default function Header() {
               className="w-full"
               onSubmit={(event) => {
                 event.preventDefault();
-                if (!searchQuery.trim()) return;
+                if (!searchFlow.query.trim()) return;
                 searchFlow.openSearch();
               }}
             >
@@ -152,8 +151,8 @@ export default function Header() {
                   <input
                     className="w-full rounded-2xl border border-slate-200 bg-white/80 py-2 pl-9 pr-3 text-xs text-slate-600 shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-200"
                     placeholder="Search recipes (local + YouTube)"
-                    value={searchQuery}
-                    onChange={(event) => setSearchQuery(event.target.value)}
+                    value={searchFlow.query}
+                    onChange={(event) => searchFlow.setQuery(event.target.value)}
                   />
                 </div>
                 <button
@@ -175,7 +174,7 @@ export default function Header() {
         onManualClose={() => setManualOpen(false)}
         onManualCreated={handleManualCreated}
         searchFlow={searchFlow}
-        searchInitialQuery={searchQuery}
+        searchInitialQuery={searchFlow.query}
       />
     </header>
   );

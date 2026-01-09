@@ -7,6 +7,7 @@ export type { PrefillCandidate };
 
 export function useSearchAddRecipeFlow(openManual: () => void) {
   const [searchOpen, setSearchOpen] = useState(false);
+  const [query, setQuery] = useState("");
   const [manualFromSearch, setManualFromSearch] = useState(false);
   const prefill = useRecipePrefill();
 
@@ -32,6 +33,8 @@ export function useSearchAddRecipeFlow(openManual: () => void) {
     searchOpen,
     openSearch,
     closeSearch,
+    query,
+    setQuery,
     manualFromSearch,
     handleCandidate,
     reset,

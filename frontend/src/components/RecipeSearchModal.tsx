@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { Search, X } from "lucide-react";
 import { useRecipes } from "@/lib/useRecipes";
 import { decodeHtmlEntities, sanitizeTitle } from "@/lib/text";
+import type { Recipe } from "@/lib/types";
 import { useLanguage } from "./LanguageProvider";
 
 type RecipeCandidate = {
@@ -17,12 +18,6 @@ type RecipeCandidate = {
   source_host?: string;
 };
 
-type Recipe = {
-  recipe_id: string;
-  name: string;
-  name_original?: string;
-  thumbnail_url?: string | null;
-};
 
 type Props = {
   open: boolean;

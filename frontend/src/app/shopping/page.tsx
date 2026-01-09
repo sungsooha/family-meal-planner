@@ -18,6 +18,7 @@ import {
 import { useLanguage } from "@/components/LanguageProvider";
 import { useToast } from "@/components/ToastProvider";
 import ActionMenu from "@/components/ActionMenu";
+import type { Recipe } from "@/lib/types";
 
 type ShoppingItem = {
   name: string;
@@ -28,17 +29,6 @@ type ShoppingItem = {
   key: string;
   default_quantity?: string | number;
   default_unit?: string;
-};
-
-type Recipe = {
-  recipe_id: string;
-  name: string;
-  meal_types?: string[];
-  servings?: number;
-  ingredients?: { name: string; quantity: number | string; unit: string }[];
-  ingredients_original?: { name: string; quantity: number | string; unit: string }[];
-  instructions?: string[];
-  instructions_original?: string[];
 };
 
 type ShoppingPayload = {
