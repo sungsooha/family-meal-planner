@@ -62,6 +62,31 @@ create table if not exists config (
   updated_at timestamptz default now()
 );
 
+-- Recommendation system (optional)
+create table if not exists recommendation_runs (
+  id text primary key,
+  week_start date,
+  week_end date,
+  input_config jsonb not null,
+  summary jsonb,
+  created_at timestamptz default now()
+);
+
+create table if not exists recommendation_candidates (
+  id text primary key,
+  run_id text not null references recommendation_runs(id) on delete cascade,
+  recipe_id text,
+  source text not null,
+  source_url text,
+  title text,
+  score numeric,
+  status text,
+  created_at timestamptz default now()
+);
+
+create index if not exists recommendation_runs_week_start_idx on recommendation_runs (week_start);
+create index if not exists recommendation_candidates_run_idx on recommendation_candidates (run_id);
+
 create index if not exists buy_lists_week_start_idx on buy_lists (week_start);
 create index if not exists buy_lists_week_end_idx on buy_lists (week_end);
 

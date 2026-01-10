@@ -15,7 +15,7 @@ import { useLanguage } from "@/components/LanguageProvider";
 import { getYouTubeId } from "@/lib/youtube";
 import { useToast } from "@/components/ToastProvider";
 import type { Recipe, Ingredient } from "@/lib/types";
-import { parseMealTypes } from "@/lib/recipeForm";
+import { parseMealTypes, parseIngredients, parseInstructions } from "@/lib/recipeForm";
 
 
 type FamilyMember = {
@@ -41,11 +41,14 @@ export default function RecipeDetailPage() {
   const { language } = useLanguage();
   const { showToast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
+  const [pendingAutoFill, setPendingAutoFill] = useState(false);
   const [draft, setDraft] = useState<Recipe | null>(null);
   const [mealTypesInput, setMealTypesInput] = useState("");
   const [showOtherLanguage, setShowOtherLanguage] = useState(false);
   const [showNotes, setShowNotes] = useState(false);
   const [showSourceUrl, setShowSourceUrl] = useState(false);
+  const [prefillLoading, setPrefillLoading] = useState(false);
+  const [prefillError, setPrefillError] = useState("");
   const [ingredientDraftEn, setIngredientDraftEn] = useState<IngredientDraft>({
     name: "",
     quantity: "",
@@ -75,6 +78,8 @@ export default function RecipeDetailPage() {
       setShowOtherLanguage(false);
       setShowNotes(Boolean(recipe.notes));
       setShowSourceUrl(false);
+      setPrefillLoading(false);
+      setPrefillError("");
     }
   }, [recipe]);
 
@@ -165,6 +170,71 @@ export default function RecipeDetailPage() {
     await mutateRecipe();
   };
 
+  const handleAutoFill = async () => {
+    if (!draft?.source_url) {
+      setPrefillError("Source URL is missing.");
+      return;
+    }
+    setPrefillLoading(true);
+    setPrefillError("");
+    try {
+      const response = await fetch("/api/recipes/prefill", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ source_url: draft.source_url }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setPrefillError(data.error ?? "Auto-fill failed.");
+        return;
+      }
+      const prefill = data.prefill;
+      if (!prefill) {
+        setPrefillError("Auto-fill returned no data.");
+        return;
+      }
+      const patch: Partial<Recipe> = { ...draft };
+      if (!patch.name_original && prefill.name_original) patch.name_original = prefill.name_original;
+      if ((!patch.meal_types || patch.meal_types.length === 0) && prefill.meal_types?.length) {
+        patch.meal_types = prefill.meal_types;
+        setMealTypesInput(prefill.meal_types.join(", "));
+      }
+      if (!patch.servings && prefill.servings) {
+        patch.servings = Number(prefill.servings) || prefill.servings;
+      }
+      if ((!patch.ingredients || patch.ingredients.length === 0) && prefill.ingredients_text) {
+        patch.ingredients = parseIngredients(prefill.ingredients_text);
+      }
+      if (
+        (!patch.ingredients_original || patch.ingredients_original.length === 0) &&
+        prefill.ingredients_original_text
+      ) {
+        patch.ingredients_original = parseIngredients(prefill.ingredients_original_text);
+      }
+      if ((!patch.instructions || patch.instructions.length === 0) && prefill.instructions_text) {
+        patch.instructions = parseInstructions(prefill.instructions_text);
+      }
+      if (
+        (!patch.instructions_original || patch.instructions_original.length === 0) &&
+        prefill.instructions_original_text
+      ) {
+        patch.instructions_original = parseInstructions(prefill.instructions_original_text);
+      }
+      if (!patch.thumbnail_url && prefill.thumbnail_url) patch.thumbnail_url = prefill.thumbnail_url;
+      setDraft(patch as Recipe);
+    } catch (error) {
+      setPrefillError(error instanceof Error ? error.message : "Auto-fill failed.");
+    } finally {
+      setPrefillLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!pendingAutoFill || !isEditing) return;
+    setPendingAutoFill(false);
+    handleAutoFill();
+  }, [pendingAutoFill, isEditing, handleAutoFill]);
+
   const saveFeedback = async () => {
     if (feedbackSavingRef.current) return;
     feedbackSavingRef.current = true;
@@ -247,12 +317,27 @@ export default function RecipeDetailPage() {
           <div>
             <h2 className="text-lg font-semibold text-slate-900">{recipeName}</h2>
           </div>
-          <button
-            className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs text-slate-500 hover:text-slate-900"
-            onClick={() => setIsEditing(true)}
-          >
-            Edit
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs text-emerald-700 hover:bg-emerald-100"
+              onClick={() => {
+                if (!recipe.source_url) {
+                  showToast("Source URL is missing.");
+                  return;
+                }
+                setIsEditing(true);
+                setPendingAutoFill(true);
+              }}
+            >
+              Auto-fill
+            </button>
+            <button
+              className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs text-slate-500 hover:text-slate-900"
+              onClick={() => setIsEditing(true)}
+            >
+              Edit
+            </button>
+          </div>
         </div>
       </section>
 
@@ -343,6 +428,16 @@ export default function RecipeDetailPage() {
               <button className="text-sm text-slate-500" onClick={() => setIsEditing(false)}>
                 Cancel
               </button>
+            </div>
+            <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-600">
+              <button
+                className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600 hover:text-slate-800"
+                onClick={handleAutoFill}
+                disabled={prefillLoading}
+              >
+                {prefillLoading ? "Auto-filling…" : "Auto-fill from source"}
+              </button>
+              {prefillError ? <span className="text-rose-500">{prefillError}</span> : null}
             </div>
             {draft && (
               <RecipeFormBody

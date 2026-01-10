@@ -85,17 +85,75 @@ export type FamilyMember = {
   label: string;
 };
 
+export type DailyRecommendationCandidate = {
+  id: string;
+  run_id: string;
+  source: "local" | "gemini" | "youtube";
+  title: string;
+  source_url?: string;
+  thumbnail_url?: string | null;
+  recipe_id?: string;
+  is_existing?: boolean;
+  meal_types?: string[];
+  reason?: string;
+  score?: number;
+  rank?: number;
+  status?: "new" | "accepted" | "discarded";
+  assignment_status?: "assigned" | "added";
+  autofill_status?: "running" | "success" | "failed" | "skipped";
+  autofill_model?: string;
+  autofill_cached?: boolean;
+  autofill_error?: string;
+};
+
+export type DailyRecommendationRun = {
+  id: string;
+  date: string;
+  created_at: string;
+  status?: "ok" | "local-only" | "error" | "running";
+  stage?: "collect" | "local" | "gemini" | "youtube" | "finalize";
+  stage_detail?: {
+    youtube_total?: number;
+    youtube_done?: number;
+    current_idea?: string;
+  };
+  reason?: string;
+  model?: string;
+  language?: "en" | "original";
+  stats?: {
+    existing_count?: number;
+  };
+  debug?: string[];
+  candidates: DailyRecommendationCandidate[];
+};
+
+export type DailyRecommendationStore = {
+  runs: DailyRecommendationRun[];
+};
+
 export type AppConfig = {
   allow_repeats_if_needed?: boolean;
   family_size?: number;
   max_repeat_per_week?: number;
   family_members?: FamilyMember[];
+  daily_reco_enabled?: boolean;
+  daily_reco_max_chips?: number;
+  daily_reco_expire_days?: number;
+  daily_reco_candidates?: number;
+  daily_reco_new_ratio?: number;
+  daily_recommendations?: DailyRecommendationStore;
 };
 
 const DEFAULT_CONFIG: AppConfig = {
   allow_repeats_if_needed: true,
   family_size: 4,
   max_repeat_per_week: 2,
+  daily_reco_enabled: true,
+  daily_reco_max_chips: 3,
+  daily_reco_expire_days: 7,
+  daily_reco_candidates: 6,
+  daily_reco_new_ratio: 0.5,
+  daily_recommendations: { runs: [] },
   family_members: [
     { id: "dad", label: "Dad" },
     { id: "mom", label: "Mom" },
@@ -134,7 +192,7 @@ function normalizeRecipe(recipe: Recipe): Recipe {
   return normalized;
 }
 
-function normalizeSourceUrl(url?: string | null): string | null {
+export function normalizeSourceUrl(url?: string | null): string | null {
   if (!url) return null;
   try {
     const parsed = new URL(url);
@@ -208,6 +266,34 @@ export async function getRecipeById(recipeId: string): Promise<Recipe | null> {
   }
   const recipes = await getRecipes();
   return recipes.find((recipe) => recipe.recipe_id === recipeId) ?? null;
+}
+
+export async function getRecipeBySourceUrl(sourceUrl: string): Promise<Recipe | null> {
+  const normalized = normalizeSourceUrl(sourceUrl);
+  if (!normalized) return null;
+  if (isSupabaseEnabled()) {
+    const admin = getSupabaseAdmin();
+    const youtubeId = getYouTubeId(normalized);
+    if (youtubeId) {
+      const { data } = await admin
+        .from("recipes")
+        .select("*")
+        .or(
+          `source_url.ilike.%v=${youtubeId}%,source_url.ilike.%youtu.be/${youtubeId}%,source_url.ilike.%/shorts/${youtubeId}%`,
+        )
+        .limit(1);
+      if (data?.[0]) return recipeFromRow(data[0]);
+      return null;
+    }
+    const { data } = await admin.from("recipes").select("*").eq("source_url", normalized).limit(1);
+    if (data?.[0]) return recipeFromRow(data[0]);
+    return null;
+  }
+  const recipes = await getRecipes();
+  const match = recipes.find(
+    (recipe) => normalizeSourceUrl(recipe.source_url ?? null) === normalized,
+  );
+  return match ?? null;
 }
 
 function safeFilename(value: string): string {
@@ -553,6 +639,16 @@ export async function saveConfig(config: AppConfig): Promise<void> {
     return;
   }
   await writeJson(CONFIG_FILE, payload);
+}
+
+export async function getDailyRecommendations(): Promise<DailyRecommendationStore> {
+  const config = await getConfig();
+  return config.daily_recommendations ?? { runs: [] };
+}
+
+export async function saveDailyRecommendations(store: DailyRecommendationStore): Promise<void> {
+  const config = await getConfig();
+  await saveConfig({ ...config, daily_recommendations: store });
 }
 
 export async function getShoppingState(): Promise<Record<string, ShoppingStateItem>> {
