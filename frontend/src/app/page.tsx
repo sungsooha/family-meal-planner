@@ -1823,20 +1823,21 @@ export default function WeeklyPlanPage() {
                                   ? candidate.meal_types.join(", ")
                                   : "Flexible"}
                               </div>
-                              {candidate.reason || dailySimilarMap.get(candidate.id)?.length ? (
+                              {candidate.reason ? (
+                                <div className="text-[11px] text-slate-400">{candidate.reason}</div>
+                              ) : null}
+                              {dailySimilarMap.get(candidate.id)?.length ? (
                                 <div className="text-[11px] text-slate-400">
-                                  {candidate.reason ?? "No reason provided."}
-                                  {dailySimilarMap.get(candidate.id)?.length
-                                    ? ` · Similar: ${dailySimilarMap
-                                        .get(candidate.id)
-                                        ?.map((entry) =>
-                                          language === "original"
-                                            ? entry.recipe.name_original ?? entry.recipe.name ?? ""
-                                            : entry.recipe.name ?? entry.recipe.name_original ?? "",
-                                        )
-                                        .filter(Boolean)
-                                        .join(" · ")}`
-                                    : ""}
+                                  Similar:{" "}
+                                  {dailySimilarMap
+                                    .get(candidate.id)
+                                    ?.map((entry) =>
+                                      language === "original"
+                                        ? entry.recipe.name_original ?? entry.recipe.name ?? ""
+                                        : entry.recipe.name ?? entry.recipe.name_original ?? "",
+                                    )
+                                    .filter(Boolean)
+                                    .join(" · ")}
                                 </div>
                               ) : null}
                             </div>
@@ -2197,9 +2198,27 @@ export default function WeeklyPlanPage() {
                   onChange={handleFeedbackChange}
                   compact
                 />
-              </div>
-            </div>
-          </div>
+                          </div>
+                        </div>
+                        <div className="text-[11px] text-slate-500">
+                          {candidate.meal_types?.length ? candidate.meal_types.join(", ") : "Flexible"}
+                          {candidate.reason ? ` · ${candidate.reason}` : ""}
+                        </div>
+                        {dailySimilarMap.get(candidate.id)?.length ? (
+                          <div className="text-[11px] text-slate-400">
+                            Similar:{" "}
+                            {dailySimilarMap
+                              .get(candidate.id)
+                              ?.map((entry) =>
+                                language === "original"
+                                  ? entry.recipe.name_original ?? entry.recipe.name ?? ""
+                                  : entry.recipe.name ?? entry.recipe.name_original ?? "",
+                              )
+                              .filter(Boolean)
+                              .join(" · ")}
+                          </div>
+                        ) : null}
+                      </div>
         </div>
         </>
       )}
