@@ -115,7 +115,7 @@ export default function ShoppingPage() {
 
   const handlePrintChecklist = () => {
     const items = shoppingList;
-    const title = lang === "original" ? "장보기 목록" : "Shopping List";
+    const title = "Shopping List";
     const html = `
       <html>
         <head>

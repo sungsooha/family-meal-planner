@@ -125,7 +125,8 @@ export async function POST(request: Request, { params }: Params) {
     const newRecipeId = crypto.randomUUID().replace(/-/g, "");
     const payload = {
       recipe_id: newRecipeId,
-      name: candidate.title,
+      name: candidate.title || candidate.title_original || "New recipe",
+      name_original: candidate.title_original ?? undefined,
       meal_types: candidate.meal_types ?? [],
       source_url: candidate.source_url,
       ingredients: [],

@@ -96,6 +96,10 @@ export default function DailyRecommendationsModal(props: Props) {
     if (!activeDailyRun || !dailyAssignCandidateId) return null;
     const candidate = activeDailyRun.candidates.find((entry) => entry.id === dailyAssignCandidateId);
     if (!candidate) return null;
+    const candidateTitle =
+      language === "original"
+        ? candidate.title_original ?? candidate.title ?? "New recipe"
+        : candidate.title ?? candidate.title_original ?? "New recipe";
     const day = plan.find((entry) => entry.date === dailyAssignDate);
     const entry = day?.meals?.[dailyAssignMeal];
     if (!entry?.recipe_id) return null;
@@ -104,7 +108,7 @@ export default function DailyRecommendationsModal(props: Props) {
       language === "original"
         ? existingRecipe?.name_original ?? existingRecipe?.name ?? "Existing recipe"
         : existingRecipe?.name ?? existingRecipe?.name_original ?? "Existing recipe";
-    return `${existingName} will be replaced with ${candidate.title}.`;
+    return `${existingName} will be replaced with ${candidateTitle}.`;
   }, [
     activeDailyRun,
     dailyAssignCandidateId,
@@ -256,6 +260,10 @@ export default function DailyRecommendationsModal(props: Props) {
             ) : (
               activeRunCandidates.map((candidate) => {
                 const recipeMeta = candidate.recipe_id ? recipesById.get(candidate.recipe_id) : null;
+                const displayTitle =
+                  language === "original"
+                    ? candidate.title_original ?? candidate.title ?? ""
+                    : candidate.title ?? candidate.title_original ?? "";
                 const sourceUrl = candidate.source_url ?? recipeMeta?.source_url ?? null;
                 const youtubeId = sourceUrl ? getYouTubeId(sourceUrl) : null;
                 const thumb =
@@ -325,7 +333,7 @@ export default function DailyRecommendationsModal(props: Props) {
                           )}
                           <div className="space-y-1">
                             <div className="flex flex-wrap items-center gap-2">
-                              <p className="text-sm font-semibold text-slate-900">{candidate.title}</p>
+                              <p className="text-sm font-semibold text-slate-900">{displayTitle}</p>
                               <span
                                 className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
                                   candidate.is_existing

@@ -21,6 +21,7 @@ import { scoreTitleQueryMatch } from "@/lib/search";
 
 type GeminiIdea = {
   title: string;
+  title_original?: string;
   meal_types?: string[];
   keywords?: string[];
   reason?: string;
@@ -65,12 +66,15 @@ function parseGeminiIdeas(raw: string): GeminiIdea[] {
   const list = Array.isArray(parsed.ideas) ? parsed.ideas : Array.isArray(parsed) ? parsed : [];
   return list
     .map((item: any) => ({
-      title: String(item?.title ?? "").trim(),
+      title: String(item?.title ?? item?.title_en ?? item?.title_english ?? "").trim(),
+      title_original: String(
+        item?.title_original ?? item?.title_ko ?? item?.title_korean ?? "",
+      ).trim(),
       meal_types: Array.isArray(item?.meal_types) ? item.meal_types : [],
       keywords: Array.isArray(item?.keywords) ? item.keywords : [],
       reason: item?.reason ? String(item.reason) : undefined,
     }))
-    .filter((item: GeminiIdea) => item.title);
+    .filter((item: GeminiIdea) => item.title || item.title_original);
 }
 
 function buildGeminiPrompt(args: {
@@ -91,9 +95,12 @@ function buildGeminiPrompt(args: {
       ? "제목은 짧고 유튜브 검색에 적합해야 합니다."
       : "Keep titles short and YouTube-search friendly.",
     isKorean
+      ? "한국어와 영어 제목을 모두 제공해 주세요."
+      : "Provide both Korean and English titles.",
+    isKorean
       ? "출력은 JSON만 반환하세요."
       : "Return JSON ONLY with this shape:",
-    `{\"ideas\":[{\"title\":\"...\",\"meal_types\":[\"breakfast\"],\"keywords\":[\"...\"] ,\"reason\":\"...\"}]}`,
+    `{\"ideas\":[{\"title\":\"English title\",\"title_ko\":\"Korean title\",\"meal_types\":[\"breakfast\"],\"keywords\":[\"...\"] ,\"reason\":\"...\"}]}`,
     likedList
       ? isKorean
         ? `가족이 좋아했던 메뉴: ${likedList}`
@@ -272,11 +279,8 @@ export async function POST(request: Request) {
         id: crypto.randomUUID(),
         run_id: runId,
         source: "local",
-        title: sanitizeTitle(
-          language === "original"
-            ? item.recipe.name_original ?? item.recipe.name
-            : item.recipe.name,
-        ),
+        title: sanitizeTitle(item.recipe.name ?? item.recipe.name_original ?? ""),
+        title_original: sanitizeTitle(item.recipe.name_original ?? item.recipe.name ?? ""),
         recipe_id: item.recipe.recipe_id,
         is_existing: true,
         thumbnail_url: item.recipe.thumbnail_url ?? null,
@@ -341,15 +345,17 @@ export async function POST(request: Request) {
           let ideaIndex = 0;
           for (const idea of ideas) {
             ideaIndex += 1;
+            const ideaTitle = idea.title || idea.title_original || "";
+            if (!ideaTitle) continue;
             try {
-              debugSteps.push(`YouTube search: ${idea.title}`);
+              debugSteps.push(`YouTube search: ${ideaTitle}`);
               run.stage_detail = {
                 youtube_total: ideas.length,
                 youtube_done: ideaIndex - 1,
-                current_idea: idea.title,
+                current_idea: ideaTitle,
               };
               await commitRun();
-              const searches = await searchWithYouTube(idea.title, 4);
+              const searches = await searchWithYouTube(ideaTitle, 4);
               pushDebug(
                 "YouTube results",
                 searches.map((item) => item.title),
@@ -357,7 +363,7 @@ export async function POST(request: Request) {
               const ranked = searches
                 .map((item) => ({
                   item,
-                  score: scoreCandidate(item.title, idea.title, idea.keywords ?? []),
+                  score: scoreCandidate(item.title, ideaTitle, idea.keywords ?? []),
                 }))
                 .sort((a, b) => b.score - a.score);
               pushDebug(
@@ -382,7 +388,8 @@ export async function POST(request: Request) {
                 id: crypto.randomUUID(),
                 run_id: runId,
                 source: "youtube",
-                title: sanitizeTitle(pick.title),
+                title: sanitizeTitle(idea.title || pick.title),
+                title_original: sanitizeTitle(idea.title_original || ""),
                 source_url: pick.url,
                 recipe_id: existing?.recipe_id,
                 is_existing: Boolean(existing),
@@ -398,7 +405,7 @@ export async function POST(request: Request) {
               run.stage_detail = {
                 youtube_total: ideas.length,
                 youtube_done: ideaIndex,
-                current_idea: idea.title,
+                current_idea: ideaTitle,
               };
               await commitRun();
             } catch {

@@ -6,6 +6,7 @@ import { scoreTitleMatch, tokenizeTitle } from "@/lib/text";
 import type {
   DailyRecommendationAcceptRequest,
   DailyRecommendationAcceptResponse,
+  DailyRecommendationCandidate,
   DailyRecommendationDeleteResponse,
   DailyRecommendationDiscardRequest,
   DailyRecommendationDiscardResponse,
@@ -127,6 +128,16 @@ export function useDailyRecommendations(options: Options) {
     });
   }, [recipes, language]);
 
+  const getCandidateTitle = useCallback(
+    (candidate: DailyRecommendationCandidate) => {
+      if (language === "original") {
+        return candidate.title_original || candidate.title;
+      }
+      return candidate.title || candidate.title_original || "";
+    },
+    [language],
+  );
+
   const dailyCandidates = useMemo(() => {
     if (!activeDailyRun) return [];
     return [...activeDailyRun.candidates].sort((a, b) => {
@@ -142,10 +153,11 @@ export function useDailyRecommendations(options: Options) {
     const map = new Map<string, Array<{ recipe: RecipeSummary; score: number }>>();
     dailyCandidates.forEach((candidate) => {
       if (candidate.is_existing || candidate.recipe_id) return;
+      const candidateTitle = getCandidateTitle(candidate);
       const scored = recipeTitleIndex
         .map((entry) => ({
           recipe: entry.recipe,
-          score: scoreTitleMatch(candidate.title, entry.title),
+          score: scoreTitleMatch(candidateTitle, entry.title),
         }))
         .filter((entry) => entry.score > 0)
         .sort((a, b) => b.score - a.score)
@@ -155,7 +167,7 @@ export function useDailyRecommendations(options: Options) {
       }
     });
     return map;
-  }, [activeDailyRun, dailyCandidates, recipeTitleIndex]);
+  }, [activeDailyRun, dailyCandidates, getCandidateTitle, recipeTitleIndex]);
 
   const handleGenerateDaily = useCallback(
     async (options?: { date?: string; force?: boolean }) => {
@@ -266,6 +278,7 @@ export function useDailyRecommendations(options: Options) {
         { revalidate: false },
       );
       if (assign && plan) {
+        const assignedTitle = getCandidateTitle(candidate);
         setPlan((prev) => {
           if (!prev) return prev;
           const next = {
@@ -279,7 +292,7 @@ export function useDailyRecommendations(options: Options) {
                   ...day.meals,
                   [targetMeal]: {
                     ...(existing ?? {}),
-                    name: candidate.title,
+                    name: assignedTitle,
                     recipe_id: candidate.recipe_id ?? existing?.recipe_id,
                   },
                 },
@@ -365,6 +378,7 @@ export function useDailyRecommendations(options: Options) {
       activeDailyRun,
       dailyAssignDate,
       dailyAssignMeal,
+      getCandidateTitle,
       mutate,
       mutateDaily,
       plan,

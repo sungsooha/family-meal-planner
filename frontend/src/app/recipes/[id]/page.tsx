@@ -99,8 +99,8 @@ export default function RecipeDetailPage() {
     language === "original" ? recipe?.name_original || recipe?.name : recipe?.name;
   const members = configData?.config.family_members ?? [];
   const showEnglishPrimary = language === "en";
-  const primaryLabel = showEnglishPrimary ? "Name (English)" : "Name (Original)";
-  const secondaryLabel = showEnglishPrimary ? "Name (Original)" : "Name (English)";
+  const primaryLabel = showEnglishPrimary ? "Name (English)" : "Name (Korean)";
+  const secondaryLabel = showEnglishPrimary ? "Name (Korean)" : "Name (English)";
   const primaryNameValue = showEnglishPrimary ? draft?.name ?? "" : draft?.name_original ?? "";
   const secondaryNameValue = showEnglishPrimary ? draft?.name_original ?? "" : draft?.name ?? "";
   const updateDraft = (patch: Partial<Recipe>) => {

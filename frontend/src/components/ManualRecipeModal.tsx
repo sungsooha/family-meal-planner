@@ -180,8 +180,8 @@ export default function ManualRecipeModal({
   if (!open) return null;
 
   const showEnglishPrimary = language === "en";
-  const primaryLabel = showEnglishPrimary ? "Name (English)" : "Name (Original)";
-  const secondaryLabel = showEnglishPrimary ? "Name (Original)" : "Name (English)";
+  const primaryLabel = showEnglishPrimary ? "Name (English)" : "Name (Korean)";
+  const secondaryLabel = showEnglishPrimary ? "Name (Korean)" : "Name (English)";
   const primaryNameValue = showEnglishPrimary ? manualName : manualNameOriginal;
   const secondaryNameValue = showEnglishPrimary ? manualNameOriginal : manualName;
   const setPrimaryName = showEnglishPrimary ? setManualName : setManualNameOriginal;

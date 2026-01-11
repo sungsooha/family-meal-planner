@@ -171,7 +171,7 @@ export default function RecipeFormBody({
           onChange={(event) => setMealTypesValue(event.target.value)}
         />
         <label className="text-xs uppercase tracking-wide text-slate-400">
-          Instructions ({language === "en" ? "en" : "original"})
+        Instructions ({language === "en" ? "en" : "Korean"})
         </label>
         <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-3">
           {primaryInstructions.length > 0 ? (
@@ -230,7 +230,7 @@ export default function RecipeFormBody({
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <label className="text-xs uppercase tracking-wide text-slate-400">
-            Ingredients ({language === "en" ? "en" : "original"})
+            Ingredients ({language === "en" ? "en" : "Korean"})
           </label>
           <div className="flex items-center gap-2">
             <span className="text-[10px] uppercase tracking-wide text-slate-400">Servings</span>
@@ -381,7 +381,7 @@ export default function RecipeFormBody({
             onChange={(event) => setSecondaryName(event.target.value)}
           />
           <label className="text-xs uppercase tracking-wide text-slate-400">
-            Instructions ({language === "en" ? "original" : "en"})
+            Instructions ({language === "en" ? "Korean" : "en"})
           </label>
           <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-3">
             {secondaryInstructions.length > 0 ? (
@@ -439,7 +439,7 @@ export default function RecipeFormBody({
             </div>
           </div>
           <label className="text-xs uppercase tracking-wide text-slate-400">
-            Ingredients ({language === "en" ? "original" : "en"})
+            Ingredients ({language === "en" ? "Korean" : "en"})
           </label>
           <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-3">
             <div className="grid gap-2 sm:grid-cols-[1.2fr_0.6fr_0.6fr_auto]">

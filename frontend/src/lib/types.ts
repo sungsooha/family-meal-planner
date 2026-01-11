@@ -345,6 +345,7 @@ export type DailyRecommendationCandidate = {
   run_id: string;
   source: "local" | "gemini" | "youtube";
   title: string;
+  title_original?: string;
   source_url?: string;
   thumbnail_url?: string | null;
   recipe_id?: string;

@@ -68,7 +68,7 @@ export default function SavedBuyListsPage() {
   };
 
   const handlePrint = (list: BuyList) => {
-    const title = list.lang === "original" ? "장보기 목록" : "Shopping List";
+    const title = "Shopping List";
     const html = `
       <html>
         <head>
@@ -140,7 +140,7 @@ export default function SavedBuyListsPage() {
                   {list.week_start} → {list.week_end}
                 </p>
                 <p className="text-sm font-semibold text-slate-900">
-                  {list.items.length} items · {list.lang === "original" ? "Original" : "English"}
+                  {list.items.length} items · {list.lang === "original" ? "Korean" : "English"}
                 </p>
                 <p className="text-xs text-slate-500">Saved at {new Date(list.saved_at).toLocaleString()}</p>
               </div>

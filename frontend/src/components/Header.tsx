@@ -80,7 +80,7 @@ export default function Header() {
                 onChange={(event) => setLanguage(event.target.value as "en" | "original")}
               >
                 <option value="en">English</option>
-                <option value="original">Original</option>
+                <option value="original">Korean</option>
               </select>
               <Link
                 className={`rounded-full border px-2.5 py-1 text-[11px] shadow-sm hover:text-slate-900 ${
