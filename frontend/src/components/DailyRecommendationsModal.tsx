@@ -33,7 +33,9 @@ type Props = {
   setDailyAssignDate: (value: string) => void;
   dailyAssignMonth: Date;
   setDailyAssignMonth: (value: Date | ((prev: Date) => Date)) => void;
-  handleGenerateDaily: (options?: { date?: string; force?: boolean }) => void;
+  dailyPreference: string;
+  setDailyPreference: (value: string) => void;
+  handleGenerateDaily: (options?: { date?: string; force?: boolean; preference?: string }) => void;
   handleDailyAccept: (runId: string, candidateId: string, options?: { assign?: boolean }) => void;
   handleDailyDiscard: (runId: string, candidateId: string) => void;
   handleDailyDeleteRun: (runId: string) => void;
@@ -73,6 +75,8 @@ export default function DailyRecommendationsModal(props: Props) {
     setDailyAssignDate,
     dailyAssignMonth,
     setDailyAssignMonth,
+    dailyPreference,
+    setDailyPreference,
     handleGenerateDaily,
     handleDailyAccept,
     handleDailyDiscard,
@@ -155,6 +159,7 @@ export default function DailyRecommendationsModal(props: Props) {
                 handleGenerateDaily({
                   date: activeDailyRun?.date ?? formatLocalDate(new Date()),
                   force: true,
+                  preference: dailyPreference,
                 })
               }
               disabled={dailyLoading}
@@ -165,6 +170,16 @@ export default function DailyRecommendationsModal(props: Props) {
               Close
             </button>
           </div>
+        </div>
+        <div className="mt-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-xs text-slate-600">
+          <label className="text-xs font-semibold text-slate-700">Preferences (optional)</label>
+          <textarea
+            className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700"
+            rows={2}
+            value={dailyPreference}
+            onChange={(event) => setDailyPreference(event.target.value)}
+            placeholder="e.g. Korean soup, kid-friendly, no pork"
+          />
         </div>
         {dailyLoading ? (
           <div className="mt-3 space-y-2 text-[11px] text-slate-500">

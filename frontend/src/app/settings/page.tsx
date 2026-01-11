@@ -158,6 +158,21 @@ export default function SettingsPage() {
             />
             <span className="font-semibold text-slate-700">Allow repeats if needed</span>
           </label>
+          <label className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-xs md:col-span-2">
+            <span className="font-semibold text-slate-700">Recommendation preferences (default)</span>
+            <textarea
+              className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+              rows={2}
+              value={config.recommendation_preferences ?? ""}
+              onChange={(event) =>
+                setConfig({ ...config, recommendation_preferences: event.target.value })
+              }
+              placeholder="e.g. Korean comfort food, kid-friendly, no pork"
+            />
+            <p className="mt-2 text-[11px] text-slate-500">
+              Used as a default when generating daily recommendations.
+            </p>
+          </label>
         </div>
       </section>
 

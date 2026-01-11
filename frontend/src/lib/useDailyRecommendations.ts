@@ -29,6 +29,7 @@ type Options = {
   recipes: RecipeSummary[];
   recipesById: Map<string, RecipeSummary>;
   mealTypeOptions: string[];
+  defaultPreference?: string;
 };
 
 type DailyRun = DailyRecommendationStore["runs"][number];
@@ -60,6 +61,7 @@ export function useDailyRecommendations(options: Options) {
   const [dailyAssignMeal, setDailyAssignMeal] = useState("dinner");
   const [dailyAssignDate, setDailyAssignDate] = useState<string>("");
   const [dailyAssignMonth, setDailyAssignMonth] = useState<Date>(new Date());
+  const [dailyPreference, setDailyPreference] = useState("");
   const [dailyMessage, setDailyMessage] = useState("");
   const [dailyCandidateErrors, setDailyCandidateErrors] = useState<Record<string, string>>({});
   const [dailyRunErrors, setDailyRunErrors] = useState<Record<string, string>>({});
@@ -170,11 +172,15 @@ export function useDailyRecommendations(options: Options) {
   }, [activeDailyRun, dailyCandidates, getCandidateTitle, recipeTitleIndex]);
 
   const handleGenerateDaily = useCallback(
-    async (options?: { date?: string; force?: boolean }) => {
+    async (runOptions?: { date?: string; force?: boolean; preference?: string }) => {
       setDailyLoading(true);
       setDailyMessage("");
       setDailyLoadingStep(0);
       const runId = crypto.randomUUID();
+      const preference = (runOptions?.preference ?? dailyPreference ?? "")
+        .toString()
+        .trim();
+      const defaultPreference = (options.defaultPreference ?? "").toString().trim();
       setDailyActiveRunId(runId);
       setDailyModalOpen(true);
       const poller = window.setInterval(() => {
@@ -185,10 +191,12 @@ export function useDailyRecommendations(options: Options) {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            date: options?.date ?? new Date().toISOString().split("T")[0],
-            force: options?.force ?? false,
+            date: runOptions?.date ?? new Date().toISOString().split("T")[0],
+            force: runOptions?.force ?? false,
             language,
             run_id: runId,
+            preference: preference || undefined,
+            default_preference: defaultPreference || undefined,
           } satisfies DailyRecommendationsRunRequest),
         });
         setDailyLoadingStep(1);
@@ -211,7 +219,7 @@ export function useDailyRecommendations(options: Options) {
         setDailyLoading(false);
       }
     },
-    [language, mutateDaily],
+    [dailyPreference, options.defaultPreference, language, mutateDaily],
   );
 
   const handleDailyAccept = useCallback(
@@ -490,6 +498,9 @@ export function useDailyRecommendations(options: Options) {
     setDailyAssignDate,
     dailyAssignMonth,
     setDailyAssignMonth,
+    dailyPreference,
+    setDailyPreference,
+    defaultPreference: options.defaultPreference,
     dailyMessage,
     setDailyMessage,
     dailyCandidateErrors,

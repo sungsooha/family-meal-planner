@@ -239,6 +239,8 @@ export type DailyRecommendationsRunRequest = {
   force?: boolean;
   language?: "en" | "original";
   run_id?: string;
+  preference?: string;
+  default_preference?: string;
 };
 
 export type DailyRecommendationsRunResponse = {
@@ -392,6 +394,7 @@ export type AppConfig = {
   family_size?: number;
   max_repeat_per_week?: number;
   family_members?: FamilyMember[];
+  recommendation_preferences?: string;
   daily_reco_enabled?: boolean;
   daily_reco_max_chips?: number;
   daily_reco_expire_days?: number;

@@ -337,6 +337,7 @@ export default function WeeklyPlanPage() {
     recipes,
     recipesById,
     mealTypeOptions,
+    defaultPreference: configData?.config?.recommendation_preferences ?? "",
   });
 
   const filteredRecipes = useMemo(() => {
@@ -1161,6 +1162,8 @@ export default function WeeklyPlanPage() {
           setDailyAssignDate={daily.setDailyAssignDate}
           dailyAssignMonth={daily.dailyAssignMonth}
           setDailyAssignMonth={daily.setDailyAssignMonth}
+          dailyPreference={daily.dailyPreference}
+          setDailyPreference={daily.setDailyPreference}
           handleGenerateDaily={daily.handleGenerateDaily}
           handleDailyAccept={daily.handleDailyAccept}
           handleDailyDiscard={daily.handleDailyDiscard}

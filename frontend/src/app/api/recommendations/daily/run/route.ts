@@ -81,9 +81,13 @@ function buildGeminiPrompt(args: {
   count: number;
   liked: string[];
   language: "en" | "original";
+  preference?: string;
+  defaultPreference?: string;
 }): string {
   const likedList = args.liked.slice(0, 10).join(", ");
   const isKorean = args.language === "original";
+  const preference = (args.preference ?? "").trim();
+  const defaultPreference = (args.defaultPreference ?? "").trim();
   return [
     isKorean
       ? "당신은 가족 식단 추천 도우미입니다."
@@ -101,6 +105,16 @@ function buildGeminiPrompt(args: {
       ? "출력은 JSON만 반환하세요."
       : "Return JSON ONLY with this shape:",
     `{\"ideas\":[{\"title\":\"English title\",\"title_ko\":\"Korean title\",\"meal_types\":[\"breakfast\"],\"keywords\":[\"...\"] ,\"reason\":\"...\"}]}`,
+    defaultPreference
+      ? isKorean
+        ? `기본 선호: ${defaultPreference}`
+        : `Default preferences: ${defaultPreference}`
+      : "",
+    preference
+      ? isKorean
+        ? `요청 선호: ${preference}`
+        : `Preference: ${preference}`
+      : "",
     likedList
       ? isKorean
         ? `가족이 좋아했던 메뉴: ${likedList}`
@@ -316,6 +330,8 @@ export async function POST(request: Request) {
           count: newCount,
           liked,
           language,
+          preference: payload?.preference,
+          defaultPreference: payload?.default_preference,
         });
         const model = "gemini-2.5-flash";
         run.model = model;
