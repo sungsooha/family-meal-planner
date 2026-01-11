@@ -15,7 +15,13 @@ import RecipeSearchAddModals from "@/components/RecipeSearchAddModals";
 import SearchAddActionButton from "@/components/SearchAddActionButton";
 import { registerOptimisticRecipe } from "@/lib/optimistic";
 import { useLanguage } from "@/components/LanguageProvider";
-import type { CreatedRecipe, Recipe, Ingredient } from "@/lib/types";
+import type {
+  Recipe,
+  RecipeCreateRequest,
+  RecipeDetailResponse,
+  RecipeSummary,
+  Ingredient,
+} from "@/lib/types";
 import { useSearchAddRecipeFlow } from "@/lib/useSearchAddRecipeFlow";
 
 
@@ -23,7 +29,7 @@ const MEAL_TYPES = ["breakfast", "lunch", "dinner", "snack"] as const;
 
 function RecipesPageClient() {
   const searchParams = useSearchParams();
-  const { recipes, optimisticIds, mutateRecipes, isLoading } = useRecipes<Recipe>();
+  const { recipes, optimisticIds, mutateRecipes, isLoading } = useRecipes();
   const { mutate } = useSWRConfig();
   const { language } = useLanguage();
   const prefetchedRecipes = useRef(new Set<string>());
@@ -32,7 +38,7 @@ function RecipesPageClient() {
     prefetchedRecipes.current.add(recipeId);
     mutate(
       `/api/recipes/${recipeId}`,
-      fetch(`/api/recipes/${recipeId}`).then((res) => res.json()),
+      fetch(`/api/recipes/${recipeId}`).then((res) => res.json() as Promise<RecipeDetailResponse>),
       { populateCache: true, revalidate: false },
     );
   }, [mutate]);
@@ -59,10 +65,10 @@ function RecipesPageClient() {
     setFilters((prev) => (prev.includes(meal) ? prev.filter((item) => item !== meal) : [...prev, meal]));
   };
 
-  const handleManualCreated = async (recipe: CreatedRecipe) => {
+  const handleManualCreated = async (recipe: RecipeCreateRequest) => {
     registerOptimisticRecipe(recipe);
     await mutateRecipes(
-      (current = []) => {
+      (current: RecipeSummary[] = []) => {
         const exists = current.some((item) => item.recipe_id === recipe.recipe_id);
         return exists ? current : [...current, recipe];
       },
@@ -84,7 +90,7 @@ function RecipesPageClient() {
   const handleImportedRecipe = async (recipe: ImportedRecipe) => {
     registerOptimisticRecipe(recipe);
     await mutateRecipes(
-      (current = []) => {
+      (current: RecipeSummary[] = []) => {
         const exists = current.some((item) => item.recipe_id === recipe.recipe_id);
         return exists ? current : [...current, recipe];
       },

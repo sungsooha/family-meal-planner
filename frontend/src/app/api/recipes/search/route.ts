@@ -1,21 +1,7 @@
 import { NextResponse } from "next/server";
 import { getYouTubeId } from "@/lib/youtube";
-
-type SearchResult = {
-  title: string;
-  url: string;
-  snippet?: string;
-};
-
-type Candidate = {
-  title: string;
-  source_url: string;
-  thumbnail_url?: string | null;
-  servings?: number | string | null;
-  ingredients?: string[];
-  instructions?: string[];
-  source_host?: string;
-};
+import type { RecipeSearchCandidate, RecipeSearchRequest, RecipeSearchResponse, WebSearchResult } from "@/lib/types";
+import { hostFromUrl, scoreTitleQueryMatch } from "@/lib/search";
 
 function extractJsonLd(html: string) {
   const matches = html.matchAll(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi);
@@ -78,38 +64,7 @@ function normalizeImage(value: any): string | null {
   return null;
 }
 
-function hostFromUrl(url: string): string {
-  try {
-    return new URL(url).hostname.replace(/^www\./, "");
-  } catch {
-    return "";
-  }
-}
-
-const SOURCE_BOOST: Record<string, number> = {
-  "allrecipes.com": 2,
-  "bbcgoodfood.com": 2,
-  "seriouseats.com": 2,
-  "foodnetwork.com": 1,
-  "thekitchn.com": 1,
-  "youtube.com": 1,
-  "youtu.be": 1,
-};
-
-function scoreCandidate(title: string, query: string, url: string) {
-  const normalizedTitle = title.toLowerCase();
-  const normalizedQuery = query.toLowerCase();
-  let score = 0;
-  if (normalizedTitle.includes(normalizedQuery)) score += 5;
-  normalizedQuery.split(" ").forEach((token) => {
-    if (token && normalizedTitle.includes(token)) score += 1;
-  });
-  const host = hostFromUrl(url);
-  score += SOURCE_BOOST[host] ?? 0;
-  return score;
-}
-
-async function fetchRecipeCandidate(url: string, fallbackTitle: string): Promise<Candidate | null> {
+async function fetchRecipeCandidate(url: string, fallbackTitle: string): Promise<RecipeSearchCandidate | null> {
   const youtubeId = getYouTubeId(url);
   if (youtubeId) {
     return {
@@ -138,7 +93,7 @@ async function fetchRecipeCandidate(url: string, fallbackTitle: string): Promise
   };
 }
 
-async function searchWithMcp(query: string, limit: number, source: string): Promise<SearchResult[]> {
+async function searchWithMcp(query: string, limit: number, source: string): Promise<WebSearchResult[]> {
   const endpoint = process.env.MCP_WEB_SEARCH_URL;
   if (!endpoint) {
     throw new Error("MCP_WEB_SEARCH_URL is not configured.");
@@ -159,14 +114,14 @@ async function searchWithMcp(query: string, limit: number, source: string): Prom
       url: item.url ?? item.link ?? "",
       snippet: item.snippet ?? item.description ?? "",
     }))
-    .filter((item: SearchResult) => item.url);
+    .filter((item: WebSearchResult) => item.url);
 }
 
 async function searchWithYouTube(
   query: string,
   limit: number,
   includeShorts: boolean,
-): Promise<SearchResult[]> {
+): Promise<WebSearchResult[]> {
   const apiKey = process.env.YOUTUBE_API_KEY;
   if (!apiKey) {
     throw new Error("YOUTUBE_API_KEY is not configured.");
@@ -200,20 +155,20 @@ async function searchWithYouTube(
       url: item.id?.videoId ? `https://www.youtube.com/watch?v=${item.id.videoId}` : "",
       snippet: item.snippet?.description ?? "",
     }))
-    .filter((item: SearchResult) => item.url);
+    .filter((item: WebSearchResult) => item.url);
 }
 
 export async function POST(request: Request) {
-  const payload = await request.json().catch(() => null);
+  const payload = (await request.json().catch(() => null)) as RecipeSearchRequest | null;
   if (!payload?.query) {
-    return NextResponse.json({ error: "Missing query." }, { status: 400 });
+    return NextResponse.json<RecipeSearchResponse>({ error: "Missing query.", candidates: [] }, { status: 400 });
   }
   const query = String(payload.query);
   const limit = Number(payload.limit ?? 6);
   const source = String(payload.source ?? "all");
   const includeShorts = Boolean(payload.include_shorts ?? true);
   try {
-    let results: SearchResult[] = [];
+    let results: WebSearchResult[] = [];
     let notice: string | null = null;
     if (source === "youtube") {
       results = await searchWithYouTube(query, limit, includeShorts);
@@ -230,7 +185,7 @@ export async function POST(request: Request) {
         }
       }
     }
-    const candidates: Candidate[] = [];
+    const candidates: RecipeSearchCandidate[] = [];
     for (const result of results.slice(0, limit)) {
       const candidate = await fetchRecipeCandidate(result.url, result.title);
       if (candidate) candidates.push(candidate);
@@ -238,11 +193,11 @@ export async function POST(request: Request) {
     const ranked = candidates
       .map((candidate) => ({
         ...candidate,
-        _score: scoreCandidate(candidate.title, query, candidate.source_url),
+        _score: scoreTitleQueryMatch(candidate.title, query, hostFromUrl(candidate.source_url)),
       }))
       .sort((a, b) => b._score - a._score)
       .map(({ _score, ...rest }) => rest);
-    return NextResponse.json(
+    return NextResponse.json<RecipeSearchResponse>(
       {
         candidates: ranked,
         notice:
@@ -256,6 +211,9 @@ export async function POST(request: Request) {
       { headers: { "Cache-Control": "s-maxage=60, stale-while-revalidate=300" } },
     );
   } catch (error: any) {
-    return NextResponse.json({ error: error?.message ?? "Search failed." }, { status: 500 });
+    return NextResponse.json<RecipeSearchResponse>(
+      { error: error?.message ?? "Search failed.", candidates: [] },
+      { status: 500 },
+    );
   }
 }

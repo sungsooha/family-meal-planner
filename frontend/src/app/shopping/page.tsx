@@ -18,32 +18,15 @@ import {
 import { useLanguage } from "@/components/LanguageProvider";
 import { useToast } from "@/components/ToastProvider";
 import ActionMenu from "@/components/ActionMenu";
-import type { Recipe } from "@/lib/types";
+import type {
+  BuyListUpdateResponse,
+  RecipeDetailResponse,
+  ShoppingItem,
+  ShoppingItemWithDefaults,
+  ShoppingPayload,
+} from "@/lib/types";
 import { postAction } from "@/lib/api";
-
-type ShoppingItem = {
-  name: string;
-  unit: string;
-  quantity: string | number;
-  recipes_count: number;
-  recipe_ids: string[];
-  key: string;
-  default_quantity?: string | number;
-  default_unit?: string;
-};
-
-type ShoppingPayload = {
-  weekly_list: ShoppingItem[];
-  shopping_items: ShoppingItem[];
-  lang: string;
-};
-
-const formatLocalDate = (date: Date) => {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-};
+import { formatLocalDate } from "@/lib/calendar";
 
 async function postActionApi(payload: Record<string, unknown>) {
   return postAction("/api/shopping", payload);
@@ -51,17 +34,17 @@ async function postActionApi(payload: Record<string, unknown>) {
 
 export default function ShoppingPage() {
   const [weeklyList, setWeeklyList] = useState<ShoppingItem[]>([]);
-  const [shoppingList, setShoppingList] = useState<ShoppingItem[]>([]);
+  const [shoppingList, setShoppingList] = useState<ShoppingItemWithDefaults[]>([]);
   const { language: lang } = useLanguage();
   const { showToast } = useToast();
   const [manualName, setManualName] = useState("");
   const [manualQuantity, setManualQuantity] = useState("");
   const [manualUnit, setManualUnit] = useState("");
-  const [editingItem, setEditingItem] = useState<ShoppingItem | null>(null);
+  const [editingItem, setEditingItem] = useState<ShoppingItemWithDefaults | null>(null);
   const [editingQuantity, setEditingQuantity] = useState("");
   const [recipeIds, setRecipeIds] = useState<string[]>([]);
   const [recipeIndex, setRecipeIndex] = useState(0);
-  const [recipeDetail, setRecipeDetail] = useState<Recipe | null>(null);
+  const [recipeDetail, setRecipeDetail] = useState<RecipeDetailResponse | null>(null);
   const [startDate, setStartDate] = useState("");
   const { mutate } = useSWRConfig();
   const prefetchedRecipes = useRef(new Set<string>());
@@ -71,7 +54,7 @@ export default function ShoppingPage() {
       prefetchedRecipes.current.add(recipeId);
       mutate(
         `/api/recipes/${recipeId}`,
-        fetch(`/api/recipes/${recipeId}`).then((res) => res.json()),
+        fetch(`/api/recipes/${recipeId}`).then((res) => res.json() as Promise<RecipeDetailResponse>),
         { populateCache: true, revalidate: false },
       );
     },
@@ -194,6 +177,7 @@ export default function ShoppingPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
+    const data = (await response.json().catch(() => ({}))) as BuyListUpdateResponse;
     if (!response.ok) {
       showToast("Failed to save buy list.");
       return;
@@ -201,7 +185,7 @@ export default function ShoppingPage() {
     showToast("Buy list saved.");
   };
 
-  const openEdit = (item: ShoppingItem) => {
+  const openEdit = (item: ShoppingItemWithDefaults) => {
     setEditingItem(item);
     setEditingQuantity(String(item.quantity ?? ""));
   };
@@ -222,7 +206,7 @@ export default function ShoppingPage() {
 
   const activeRecipeId = recipeIds[recipeIndex];
 
-  const { data: recipeDetailData } = useSWR<Recipe | null>(
+  const { data: recipeDetailData } = useSWR<RecipeDetailResponse | null>(
     activeRecipeId ? `/api/recipes/${activeRecipeId}` : null,
   );
 

@@ -1,13 +1,5 @@
-import { getConfig, getRecipes, getWeeklyPlanForDate, saveShoppingState, getShoppingState, Recipe, WeeklyPlan } from "./data";
-
-export type ShoppingItem = {
-  name: string;
-  unit: string;
-  quantity: number | string;
-  recipes_count: number;
-  recipe_ids: string[];
-  key: string;
-};
+import { getConfig, getRecipes, getWeeklyPlanForDate, saveShoppingState, getShoppingState } from "./data";
+import type { Recipe, ShoppingItem, WeeklyPlan } from "./types";
 
 const UNIT_ALIASES: Record<string, string> = {
   g: "g",

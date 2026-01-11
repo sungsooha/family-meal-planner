@@ -14,30 +14,36 @@ import { ArrowLeft, ListChecks, ShoppingBasket } from "lucide-react";
 import { useLanguage } from "@/components/LanguageProvider";
 import { getYouTubeId } from "@/lib/youtube";
 import { useToast } from "@/components/ToastProvider";
-import type { Recipe, Ingredient } from "@/lib/types";
+import type {
+  AppConfig,
+  ConfigResponse,
+  Ingredient,
+  Recipe,
+  RecipeDetailResponse,
+  RecipePrefillRequest,
+  RecipePrefillResponse,
+  RecipeUpdateRequest,
+  RecipeSummary,
+} from "@/lib/types";
 import { parseMealTypes, parseIngredients, parseInstructions } from "@/lib/recipeForm";
-
-
-type FamilyMember = {
-  id: string;
-  label: string;
-};
-
-type AppConfig = {
-  family_members?: FamilyMember[];
-};
 
 export default function RecipeDetailPage() {
   const params = useParams();
   const idParam = Array.isArray(params?.id) ? params?.id[0] : params?.id;
-  const { recipesById } = useRecipes<Recipe>();
-  const fallbackRecipe = idParam ? recipesById.get(idParam) ?? undefined : undefined;
-  const { data: recipe, mutate: mutateRecipe } = useSWR<Recipe | null>(
+  const { recipesById } = useRecipes();
+  const fallbackSummary = idParam ? recipesById.get(idParam) : undefined;
+  const fallbackRecipe = fallbackSummary
+    ? ({
+        ...fallbackSummary,
+        name_original: fallbackSummary.name_original ?? undefined,
+      } as RecipeDetailResponse)
+    : undefined;
+  const { data: recipe, mutate: mutateRecipe } = useSWR<RecipeDetailResponse | null>(
     idParam ? `/api/recipes/${idParam}` : null,
     { fallbackData: fallbackRecipe },
   );
   const { mutate } = useSWRConfig();
-  const { data: configData } = useSWR<{ config: AppConfig }>("/api/config");
+  const { data: configData } = useSWR<ConfigResponse>("/api/config");
   const { language } = useLanguage();
   const { showToast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
@@ -145,7 +151,7 @@ export default function RecipeDetailPage() {
 
   const handleSave = async () => {
     if (!draft || !idParam) return;
-    const payload = { ...draft, meal_types: parseMealTypes(mealTypesInput) };
+    const payload: RecipeUpdateRequest = { ...draft, meal_types: parseMealTypes(mealTypesInput) };
     const response = await fetch(`/api/recipes/${idParam}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -157,7 +163,7 @@ export default function RecipeDetailPage() {
     mutateRecipe(payload, { revalidate: false });
     mutate(
       "/api/recipes?view=summary",
-      (current?: Recipe[]) =>
+      (current?: RecipeSummary[]) =>
         current?.map((item) => (item.recipe_id === idParam ? { ...item, ...payload } : item)),
       { revalidate: false },
     );
@@ -181,9 +187,9 @@ export default function RecipeDetailPage() {
       const response = await fetch("/api/recipes/prefill", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ source_url: draft.source_url }),
+        body: JSON.stringify({ source_url: draft.source_url } satisfies RecipePrefillRequest),
       });
-      const data = await response.json().catch(() => ({}));
+      const data = (await response.json().catch(() => ({}))) as RecipePrefillResponse;
       if (!response.ok) {
         setPrefillError(data.error ?? "Auto-fill failed.");
         return;
@@ -200,7 +206,8 @@ export default function RecipeDetailPage() {
         setMealTypesInput(prefill.meal_types.join(", "));
       }
       if (!patch.servings && prefill.servings) {
-        patch.servings = Number(prefill.servings) || prefill.servings;
+        const numericServings = Number(prefill.servings);
+        patch.servings = Number.isFinite(numericServings) && numericServings > 0 ? numericServings : undefined;
       }
       if ((!patch.ingredients || patch.ingredients.length === 0) && prefill.ingredients_text) {
         patch.ingredients = parseIngredients(prefill.ingredients_text);
@@ -273,7 +280,7 @@ export default function RecipeDetailPage() {
     mutateRecipe(next, { revalidate: false });
     mutate(
       "/api/recipes?view=summary",
-      (current?: Recipe[]) =>
+      (current?: RecipeSummary[]) =>
         current?.map((item) =>
           item.recipe_id === idParam ? { ...item, family_feedback: next.family_feedback } : item,
         ),

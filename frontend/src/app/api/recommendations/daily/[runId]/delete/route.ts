@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDailyRecommendations, saveDailyRecommendations } from "@/lib/data";
+import type { DailyRecommendationDeleteResponse } from "@/lib/types";
 
 type Params = { params: Promise<{ runId: string }> };
 
@@ -12,5 +13,5 @@ export async function POST(_: Request, { params }: Params) {
     return NextResponse.json({ error: "Run not found." }, { status: 404 });
   }
   await saveDailyRecommendations(store);
-  return NextResponse.json({ ok: true, runs: store.runs });
+  return NextResponse.json<DailyRecommendationDeleteResponse>({ ok: true, runs: store.runs });
 }

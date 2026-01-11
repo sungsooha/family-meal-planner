@@ -2,11 +2,7 @@
 
 import { ThumbsDown, ThumbsUp } from "lucide-react";
 import type { FamilyFeedback } from "@/lib/feedback";
-
-type FamilyMember = {
-  id: string;
-  label: string;
-};
+import type { FamilyMember } from "@/lib/types";
 
 type Option = {
   value: number;

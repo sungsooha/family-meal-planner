@@ -1,12 +1,8 @@
 import { NextResponse } from "next/server";
 import { getWeeklyPlanForDate, getShoppingState, saveShoppingState } from "@/lib/data";
-import { computeShoppingList, itemKey, syncShoppingState, type ShoppingItem } from "@/lib/shopping";
+import { computeShoppingList, itemKey, syncShoppingState } from "@/lib/shopping";
 import { jsonWithCache } from "@/lib/cache";
-
-type ShoppingItemResponse = ShoppingItem & {
-  default_quantity: number | string;
-  default_unit: string;
-};
+import type { ShoppingActionRequest, ShoppingItemWithDefaults, ShoppingPayload } from "@/lib/types";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -26,7 +22,7 @@ export async function GET(request: Request) {
     }
   });
 
-  const shoppingItems: ShoppingItemResponse[] = [];
+  const shoppingItems: ShoppingItemWithDefaults[] = [];
   Object.entries(state).forEach(([key, stored]) => {
     const weekly = weeklyByKey.get(key);
     if (weekly) {
@@ -59,11 +55,11 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const payload = await request.json().catch(() => null);
+  const payload = (await request.json().catch(() => null)) as ShoppingActionRequest | null;
   if (!payload) {
     return NextResponse.json({ error: "Invalid payload." }, { status: 400 });
   }
-  const { action, lang = "en" } = payload as { action?: string; lang?: string };
+  const { action, lang = "en" } = payload;
   const state = await getShoppingState();
 
   if (action === "add") {

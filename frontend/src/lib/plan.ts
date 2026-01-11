@@ -1,4 +1,6 @@
-import { getConfig, getRecipes, Recipe, WeeklyPlan, saveDailyPlan } from "./data";
+import { getConfig, getRecipes, saveDailyPlan } from "./data";
+import { formatLocalDate } from "./calendar";
+import type { Recipe, WeeklyPlan } from "./types";
 
 const MEAL_TYPES = ["breakfast", "lunch", "dinner"] as const;
 
@@ -13,13 +15,6 @@ function shuffle<T>(items: T[]): T[] {
 
 function parseIsoDate(dateText: string): Date {
   return new Date(`${dateText}T00:00:00`);
-}
-
-function formatLocalDate(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
 }
 
 export function initializePlan(startDate: string): WeeklyPlan {

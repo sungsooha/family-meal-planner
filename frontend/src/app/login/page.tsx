@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { getSupabaseBrowser } from "@/lib/supabase";
+import type { AuthRequestLinkRequest, AuthRequestLinkResponse, AuthSignUpRequest, AuthSignUpResponse } from "@/lib/types";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -81,10 +82,10 @@ export default function LoginPage() {
       body: JSON.stringify({
         email,
         redirectTo: `${window.location.origin}${redirectTarget}`,
-      }),
+      } satisfies AuthRequestLinkRequest),
     });
     if (!response.ok) {
-      const data = await response.json().catch(() => ({}));
+      const data = (await response.json().catch(() => ({}))) as AuthRequestLinkResponse;
       setStatus(data.error ?? "Failed to send magic link.");
       return;
     }
@@ -97,10 +98,10 @@ export default function LoginPage() {
     const response = await fetch("/api/auth/sign-up", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email, password } satisfies AuthSignUpRequest),
     });
     if (!response.ok) {
-      const data = await response.json().catch(() => ({}));
+      const data = (await response.json().catch(() => ({}))) as AuthSignUpResponse;
       setStatus(data.error ?? "Failed to create account.");
       return;
     }

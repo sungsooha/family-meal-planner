@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { getBuyListById, getShoppingState, getWeeklyPlanForDate, saveBuyList, type BuyListItem } from "@/lib/data";
+import { getBuyListById, getShoppingState, getWeeklyPlanForDate, saveBuyList } from "@/lib/data";
+import type { BuyListItem, BuyListUpdateResponse } from "@/lib/types";
 import { computeShoppingList, itemKey } from "@/lib/shopping";
 
 type Params = { params: Promise<{ id: string }> };
@@ -47,5 +48,5 @@ export async function POST(_: Request, { params }: Params) {
   list.items = selectedItems;
   list.saved_at = new Date().toISOString();
   await saveBuyList(list);
-  return NextResponse.json({ ok: true });
+  return NextResponse.json<BuyListUpdateResponse>({ ok: true });
 }

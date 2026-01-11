@@ -6,31 +6,18 @@ import RecipeFormBody, {
   IngredientDraft,
   InstructionDraft,
 } from "@/components/RecipeFormBody";
-import type { CreatedRecipe, Ingredient } from "@/lib/types";
+import type { Ingredient, RecipeCreateRequest, RecipePrefill, RecipesCreateResponse } from "@/lib/types";
 import { parseIngredients, parseInstructions, parseMealTypes } from "@/lib/recipeForm";
 import { getYouTubeId } from "@/lib/youtube";
 import { useLanguage } from "./LanguageProvider";
 
-export type ManualRecipePayload = CreatedRecipe;
-
-export type ManualRecipePrefill = {
-  name?: string;
-  name_original?: string;
-  servings?: number | string;
-  source_url?: string | null;
-  thumbnail_url?: string | null;
-  meal_types?: string[];
-  ingredients_text?: string;
-  ingredients_original_text?: string;
-  instructions_text?: string;
-  instructions_original_text?: string;
-};
+export type ManualRecipePayload = RecipeCreateRequest;
 
 type Props = {
   open: boolean;
   onClose: () => void;
-  onCreated?: (recipe: CreatedRecipe) => void | Promise<void>;
-  prefill?: ManualRecipePrefill | null;
+  onCreated?: (recipe: RecipeCreateRequest) => void | Promise<void>;
+  prefill?: RecipePrefill | null;
   onBack?: () => void;
   backLabel?: string;
   loading?: boolean;
@@ -115,7 +102,7 @@ export default function ManualRecipeModal({
     setInstructionDraftOriginal({ text: "" });
   };
 
-  const applyPrefill = (data: ManualRecipePrefill) => {
+  const applyPrefill = (data: RecipePrefill) => {
     setManualName(data.name ?? "");
     setManualNameOriginal(data.name_original ?? data.name ?? "");
     setManualServings(data.servings ? String(data.servings) : "");
@@ -178,7 +165,7 @@ export default function ManualRecipeModal({
       body: JSON.stringify(payload),
     });
     if (!response.ok) {
-      const data = await response.json().catch(() => ({}));
+      const data = (await response.json().catch(() => ({}))) as RecipesCreateResponse;
       setManualError(data.error ?? "Failed to add recipe.");
       return;
     }

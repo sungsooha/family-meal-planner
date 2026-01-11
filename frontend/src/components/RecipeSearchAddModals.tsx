@@ -2,13 +2,13 @@
 
 import ManualRecipeModal from "@/components/ManualRecipeModal";
 import RecipeSearchModal from "@/components/RecipeSearchModal";
-import { PrefillCandidate, useSearchAddRecipeFlow } from "@/lib/useSearchAddRecipeFlow";
-import type { CreatedRecipe } from "@/lib/types";
+import { useSearchAddRecipeFlow } from "@/lib/useSearchAddRecipeFlow";
+import type { PrefillCandidate, RecipeCreateRequest } from "@/lib/types";
 
 type Props = {
   manualOpen: boolean;
   onManualClose: () => void;
-  onManualCreated: (recipe: CreatedRecipe) => void | Promise<void>;
+  onManualCreated: (recipe: RecipeCreateRequest) => void | Promise<void>;
   searchFlow: ReturnType<typeof useSearchAddRecipeFlow>;
   defaultBackLabel?: string;
   onDefaultBack?: () => void;

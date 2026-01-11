@@ -3,75 +3,19 @@ import path from "path";
 import { getSupabaseAdmin, isSupabaseEnabled } from "./supabase";
 import { normalizeFeedback } from "./feedback";
 import { getYouTubeId } from "./youtube";
-
-export type Ingredient = {
-  name: string;
-  quantity: number | string;
-  unit: string;
-};
-
-export type Recipe = {
-  recipe_id: string;
-  name: string;
-  name_original?: string;
-  meal_types?: string[];
-  meal_type?: string;
-  servings?: number;
-  source_url?: string | null;
-  thumbnail_url?: string | null;
-  notes?: string;
-  family_feedback_score?: number;
-  family_feedback?: Record<string, number>;
-  ingredients?: Ingredient[];
-  ingredients_original?: Ingredient[];
-  instructions?: string[];
-  instructions_original?: string[];
-};
-
-export type Meal = {
-  recipe_id?: string;
-  name?: string;
-  ingredients?: Ingredient[];
-  source_url?: string | null;
-  meal_types?: string[];
-  completed?: boolean;
-  locked?: boolean;
-} | null;
-
-export type WeeklyPlan = {
-  start_date: string;
-  days: Array<{ date: string; meals: Record<string, Meal> }>;
-};
-
-export type DailyPlan = {
-  date: string;
-  meals: Record<string, Meal>;
-};
-
-export type ShoppingStateItem = {
-  name: string;
-  unit: string;
-  quantity: string | number;
-  manual?: boolean;
-  lang?: string;
-};
-
-export type BuyListItem = {
-  name: string;
-  unit: string;
-  quantity: string | number;
-  key?: string;
-};
-
-export type BuyList = {
-  id: string;
-  week_start: string;
-  week_end: string;
-  saved_at: string;
-  status: "open" | "locked";
-  lang: string;
-  items: BuyListItem[];
-};
+import { formatLocalDate } from "./calendar";
+import type {
+  AppConfig,
+  BuyList,
+  DailyPlan,
+  DailyRecommendationStore,
+  Ingredient,
+  Meal,
+  Recipe,
+  RecipeSource,
+  ShoppingStateItem,
+  WeeklyPlan,
+} from "./types";
 
 const DATA_DIR = path.resolve(process.cwd(), "..", "data");
 const RECIPES_DIR = path.join(DATA_DIR, "recipes");
@@ -79,70 +23,6 @@ const RECIPE_SOURCES_DIR = path.join(DATA_DIR, "recipe_sources");
 const DAILY_PLANS_DIR = path.join(DATA_DIR, "daily_plans");
 const BUY_LISTS_DIR = path.join(DATA_DIR, "buy_lists");
 const CONFIG_FILE = path.join(DATA_DIR, "config.json");
-
-export type FamilyMember = {
-  id: string;
-  label: string;
-};
-
-export type DailyRecommendationCandidate = {
-  id: string;
-  run_id: string;
-  source: "local" | "gemini" | "youtube";
-  title: string;
-  source_url?: string;
-  thumbnail_url?: string | null;
-  recipe_id?: string;
-  is_existing?: boolean;
-  meal_types?: string[];
-  reason?: string;
-  score?: number;
-  rank?: number;
-  status?: "new" | "accepted" | "discarded";
-  assignment_status?: "assigned" | "added";
-  autofill_status?: "running" | "success" | "failed" | "skipped";
-  autofill_model?: string;
-  autofill_cached?: boolean;
-  autofill_error?: string;
-};
-
-export type DailyRecommendationRun = {
-  id: string;
-  date: string;
-  created_at: string;
-  status?: "ok" | "local-only" | "error" | "running";
-  stage?: "collect" | "local" | "gemini" | "youtube" | "finalize";
-  stage_detail?: {
-    youtube_total?: number;
-    youtube_done?: number;
-    current_idea?: string;
-  };
-  reason?: string;
-  model?: string;
-  language?: "en" | "original";
-  stats?: {
-    existing_count?: number;
-  };
-  debug?: string[];
-  candidates: DailyRecommendationCandidate[];
-};
-
-export type DailyRecommendationStore = {
-  runs: DailyRecommendationRun[];
-};
-
-export type AppConfig = {
-  allow_repeats_if_needed?: boolean;
-  family_size?: number;
-  max_repeat_per_week?: number;
-  family_members?: FamilyMember[];
-  daily_reco_enabled?: boolean;
-  daily_reco_max_chips?: number;
-  daily_reco_expire_days?: number;
-  daily_reco_candidates?: number;
-  daily_reco_new_ratio?: number;
-  daily_recommendations?: DailyRecommendationStore;
-};
 
 const DEFAULT_CONFIG: AppConfig = {
   allow_repeats_if_needed: true,
@@ -409,13 +289,6 @@ export async function updateRecipeFeedback(
 
 function parseIsoDate(dateText: string): Date {
   return new Date(`${dateText}T00:00:00`);
-}
-
-function formatLocalDate(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
 }
 
 async function ensureDailyPlansDir(): Promise<void> {
@@ -690,16 +563,6 @@ export function getWeekStart(targetDate?: Date): Date {
 export function toIsoDate(date: Date): string {
   return date.toISOString().split("T")[0];
 }
-
-export type RecipeSource = {
-  recipe_id: string;
-  source: string;
-  source_url?: string;
-  thumbnail_url?: string;
-  title?: string;
-  top_comment?: string;
-  description?: string;
-};
 
 export async function getRecipeSourceById(recipeId: string): Promise<RecipeSource | null> {
   if (isSupabaseEnabled()) {

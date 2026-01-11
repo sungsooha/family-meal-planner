@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo } from "react";
 import useSWR from "swr";
+import type { RecipeSummary, RecipeSummaryResponse } from "@/lib/types";
 import { mergeOptimisticRecipes, pruneOptimisticRecipes } from "./optimistic";
 
 const OPTIMISTIC_STORAGE_KEY = "optimisticRecipes";
@@ -28,10 +29,10 @@ export type RecipeBase = {
   recipe_id: string;
 };
 
-export function useRecipes<T extends RecipeBase = RecipeBase>(view: "summary" | "full" = "summary") {
+export function useRecipes<T extends RecipeBase = RecipeSummary>(view: "summary" | "full" = "summary") {
   const endpoint = view === "summary" ? "/api/recipes?view=summary" : "/api/recipes";
-  const { data, mutate, isLoading } = useSWR<T[]>(endpoint);
-  const baseRecipes = data ?? [];
+  const { data, mutate, isLoading } = useSWR<T[] | RecipeSummaryResponse>(endpoint);
+  const baseRecipes = (data ?? []) as T[];
   const recipes = useMemo(() => mergeOptimisticRecipes(baseRecipes), [baseRecipes]);
   const optimisticIds = useMemo(() => readOptimisticIds<T>(), [recipes]);
   useEffect(() => {

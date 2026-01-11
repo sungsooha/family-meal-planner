@@ -1,23 +1,15 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import type { ManualRecipePrefill } from "@/components/ManualRecipeModal";
+import type { PrefillCandidate, RecipePrefill, RecipePrefillRequest, RecipePrefillResponse } from "@/lib/types";
 
-export type PrefillCandidate = {
-  title: string;
-  source_url: string;
-  servings?: number | string | null;
-  ingredients?: string[];
-  instructions?: string[];
-  thumbnail_url?: string | null;
-};
 
 const PREFILL_CACHE_KEY = "recipe_prefill_cache";
 const PREFILL_TTL_MS = 1000 * 60 * 60 * 6;
 const PREFILL_MODELS = ["gemini-2.5-flash-lite", "gemini-2.5-flash", "gemini-3-flash"];
 
 export function useRecipePrefill() {
-  const [prefill, setPrefill] = useState<ManualRecipePrefill | null>(null);
+  const [prefill, setPrefill] = useState<RecipePrefill | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadingModel, setLoadingModel] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
@@ -34,13 +26,13 @@ export function useRecipePrefill() {
       const entry = parsed?.[url];
       if (!entry || !entry.prefill || !entry.expiresAt) return null;
       if (Date.now() > entry.expiresAt) return null;
-      return entry as { prefill: ManualRecipePrefill; model?: string; expiresAt: number };
+      return entry as { prefill: RecipePrefill; model?: string; expiresAt: number };
     } catch {
       return null;
     }
   }, []);
 
-  const saveCache = useCallback((url: string, data: { prefill: ManualRecipePrefill; model?: string }) => {
+  const saveCache = useCallback((url: string, data: { prefill: RecipePrefill; model?: string }) => {
     if (typeof sessionStorage === "undefined") return;
     try {
       const stored = sessionStorage.getItem(PREFILL_CACHE_KEY);
@@ -88,14 +80,14 @@ export function useRecipePrefill() {
               thumbnail_url: thumb,
               force,
               model,
-            }),
+            } satisfies RecipePrefillRequest),
           });
-          const payload = await response.json().catch(() => ({}));
+          const payload = (await response.json().catch(() => ({}))) as RecipePrefillResponse;
           if (!response.ok) {
             throw new Error(payload.error ?? "Auto-fill failed.");
           }
           if (payload.prefill) {
-            setPrefill(payload.prefill as ManualRecipePrefill);
+            setPrefill(payload.prefill as RecipePrefill);
             saveCache(url, { prefill: payload.prefill, model: payload.model ?? model });
           }
           if (payload.cached) {

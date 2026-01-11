@@ -1,9 +1,8 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { useRecipePrefill, PrefillCandidate } from "@/lib/useRecipePrefill";
-
-export type { PrefillCandidate };
+import { useRecipePrefill } from "@/lib/useRecipePrefill";
+import type { PrefillCandidate } from "@/lib/types";
 
 export function useSearchAddRecipeFlow(openManual: () => void) {
   const [searchOpen, setSearchOpen] = useState(false);

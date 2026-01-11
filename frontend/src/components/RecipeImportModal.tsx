@@ -3,6 +3,7 @@
 import type { ChangeEvent } from "react";
 import { useState } from "react";
 import { Upload, X, Shuffle } from "lucide-react";
+import type { RecipesCreateResponse } from "@/lib/types";
 
 export type ImportedRecipe = {
   recipe_id: string;
@@ -82,7 +83,7 @@ export default function RecipeImportModal({ open, onClose, onImported }: Props) 
       body: JSON.stringify(parsed),
     });
     if (!response.ok) {
-      const data = await response.json().catch(() => ({}));
+      const data = (await response.json().catch(() => ({}))) as RecipesCreateResponse;
       setJsonError(data.error ?? "Failed to import recipe.");
       return;
     }

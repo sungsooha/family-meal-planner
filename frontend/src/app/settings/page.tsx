@@ -2,18 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import useSWR from "swr";
-
-type FamilyMember = {
-  id: string;
-  label: string;
-};
-
-type AppConfig = {
-  allow_repeats_if_needed?: boolean;
-  family_size?: number;
-  max_repeat_per_week?: number;
-  family_members?: FamilyMember[];
-};
+import type { AppConfig, ConfigResponse, ConfigUpdateRequest } from "@/lib/types";
 
 const ID_PATTERN = /^[a-z0-9_]+$/;
 
@@ -26,7 +15,7 @@ const slugify = (value: string) =>
     .replace(/_+/g, "_");
 
 export default function SettingsPage() {
-  const { data, mutate } = useSWR<{ config: AppConfig }>("/api/config");
+  const { data, mutate } = useSWR<ConfigResponse>("/api/config");
   const [config, setConfig] = useState<AppConfig | null>(null);
   const [status, setStatus] = useState<string>("");
   const [error, setError] = useState<string>("");
@@ -102,17 +91,19 @@ export default function SettingsPage() {
       setError(validationError);
       return;
     }
+    const payload: ConfigUpdateRequest = { config };
     const response = await fetch("/api/config", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ config }),
+      body: JSON.stringify(payload),
     });
+    const responsePayload = await response.json().catch(() => ({}));
     if (!response.ok) {
-      const payload = await response.json().catch(() => ({}));
-      setError(payload.error ?? "Unable to save settings.");
+      const errorMessage = (responsePayload as { error?: string }).error ?? "Unable to save settings.";
+      setError(errorMessage);
       return;
     }
-    const updated = await response.json();
+    const updated = responsePayload as ConfigResponse;
     setConfig(updated.config);
     setStatus("Settings saved.");
     await mutate();

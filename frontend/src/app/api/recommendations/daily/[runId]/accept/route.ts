@@ -10,6 +10,12 @@ import {
 } from "@/lib/data";
 import { assignMeal } from "@/lib/plan";
 import { parseIngredients, parseInstructions } from "@/lib/recipeForm";
+import type {
+  DailyRecommendationAcceptRequest,
+  DailyRecommendationAcceptResponse,
+  RecipePrefillRequest,
+  RecipePrefillResponse,
+} from "@/lib/types";
 
 type Params = { params: Promise<{ runId: string }> };
 
@@ -30,9 +36,9 @@ async function tryAutoFillRecipe(recipe: any, request: Request): Promise<AutoFil
     const response = await fetch(`${origin}/api/recipes/prefill`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ source_url: recipe.source_url }),
+      body: JSON.stringify({ source_url: recipe.source_url } satisfies RecipePrefillRequest),
     });
-    const payload = await response.json().catch(() => ({}));
+    const payload = (await response.json().catch(() => ({}))) as RecipePrefillResponse;
     const model = payload?.model ? String(payload.model) : undefined;
     const cached = Boolean(payload?.cached);
     if (!response.ok) {
@@ -83,7 +89,7 @@ async function tryAutoFillRecipe(recipe: any, request: Request): Promise<AutoFil
 export async function POST(request: Request, { params }: Params) {
   const debugEnabled = process.env.RECO_DEBUG === "1";
   const { runId } = await params;
-  const payload = await request.json().catch(() => ({}));
+  const payload = (await request.json().catch(() => ({}))) as DailyRecommendationAcceptRequest;
   const candidateId = String(payload?.candidate_id ?? "");
   const targetDate = String(payload?.target_date ?? "");
   const meal = String(payload?.meal ?? "");
@@ -150,11 +156,22 @@ export async function POST(request: Request, { params }: Params) {
   await saveDailyRecommendations(store);
 
   if (!assign) {
-    return NextResponse.json({ ok: true, recipe_id: recipeId, run, autofill: autoFill });
+    return NextResponse.json<DailyRecommendationAcceptResponse>({
+      ok: true,
+      recipe_id: recipeId,
+      run,
+      autofill: autoFill,
+    });
   }
 
   const plan = await getWeeklyPlanForDate(startDate ?? targetDate);
   const updated = await assignMeal(plan, targetDate, meal, recipe);
 
-  return NextResponse.json({ ok: true, recipe_id: recipeId, plan: updated, run, autofill: autoFill });
+  return NextResponse.json<DailyRecommendationAcceptResponse>({
+    ok: true,
+    recipe_id: recipeId,
+    plan: updated,
+    run,
+    autofill: autoFill,
+  });
 }

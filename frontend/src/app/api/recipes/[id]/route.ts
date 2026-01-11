@@ -10,6 +10,7 @@ import {
 import { getYouTubeId } from "@/lib/youtube";
 import { computeShoppingList, syncShoppingState } from "@/lib/shopping";
 import { jsonWithCache } from "@/lib/cache";
+import type { RecipeDetailResponse, RecipeUpdateRequest, RecipesCreateResponse } from "@/lib/types";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -17,7 +18,10 @@ export async function GET(_: Request, { params }: Params) {
   const { id } = await params;
   const recipe = await getRecipeById(id);
   if (!recipe) {
-    return NextResponse.json({ error: "Recipe not found." }, { status: 404 });
+    return NextResponse.json<RecipesCreateResponse>(
+      { ok: false, error: "Recipe not found." },
+      { status: 404 },
+    );
   }
   const source = await getRecipeSourceById(id);
   let thumbnailUrl = recipe.thumbnail_url ?? source?.thumbnail_url ?? null;
@@ -38,13 +42,19 @@ export async function GET(_: Request, { params }: Params) {
 
 export async function PUT(request: Request, { params }: Params) {
   const { id } = await params;
-  const payload = await request.json().catch(() => null);
+  const payload = (await request.json().catch(() => null)) as RecipeUpdateRequest | null;
   if (!payload) {
-    return NextResponse.json({ error: "Invalid payload." }, { status: 400 });
+    return NextResponse.json<RecipesCreateResponse>(
+      { ok: false, error: "Invalid payload." },
+      { status: 400 },
+    );
   }
   const success = await updateRecipe(id, payload);
   if (!success) {
-    return NextResponse.json({ error: "Recipe not found." }, { status: 404 });
+    return NextResponse.json<RecipesCreateResponse>(
+      { ok: false, error: "Recipe not found." },
+      { status: 404 },
+    );
   }
   const dailyPlans = await listDailyPlans();
   for (const day of dailyPlans) {
@@ -71,5 +81,5 @@ export async function PUT(request: Request, { params }: Params) {
     const weeklyOriginal = await computeShoppingList(currentWeek, "original");
     await syncShoppingState(weeklyOriginal, "original");
   }
-  return NextResponse.json({ ok: true });
+  return NextResponse.json<RecipesCreateResponse>({ ok: true });
 }

@@ -1,16 +1,17 @@
 import { NextResponse } from "next/server";
 import { isEmailAllowed, getSupabaseAdmin } from "@/lib/supabase";
+import type { AuthRequestLinkRequest, AuthRequestLinkResponse } from "@/lib/types";
 
 export async function POST(request: Request) {
-  const payload = await request.json().catch(() => null);
+  const payload = (await request.json().catch(() => null)) as AuthRequestLinkRequest | null;
   const email = payload?.email?.toString().trim();
 
   if (!email) {
-    return NextResponse.json({ error: "Email is required." }, { status: 400 });
+    return NextResponse.json<AuthRequestLinkResponse>({ error: "Email is required." }, { status: 400 });
   }
 
   if (!isEmailAllowed(email)) {
-    return NextResponse.json({ error: "This email is not allowed." }, { status: 403 });
+    return NextResponse.json<AuthRequestLinkResponse>({ error: "This email is not allowed." }, { status: 403 });
   }
 
   const supabase = getSupabaseAdmin();
@@ -23,8 +24,8 @@ export async function POST(request: Request) {
   });
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json<AuthRequestLinkResponse>({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json<AuthRequestLinkResponse>({ ok: true });
 }

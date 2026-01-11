@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDailyRecommendations } from "@/lib/data";
+import type { DailyRecommendationsResponse } from "@/lib/types";
 
 export async function GET() {
   const store = await getDailyRecommendations();
@@ -8,5 +9,5 @@ export async function GET() {
     const right = b.created_at ?? "";
     return right.localeCompare(left);
   });
-  return NextResponse.json({ runs });
+  return NextResponse.json<DailyRecommendationsResponse>({ runs });
 }

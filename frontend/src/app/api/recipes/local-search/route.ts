@@ -2,33 +2,8 @@ import { NextResponse } from "next/server";
 import { getRecipes } from "@/lib/data";
 import { getSupabaseAdmin, isSupabaseEnabled } from "@/lib/supabase";
 import { jsonWithCache } from "@/lib/cache";
-
-type LocalResult = {
-  recipe_id: string;
-  name: string;
-  name_original?: string | null;
-  source_url?: string | null;
-  thumbnail_url?: string | null;
-};
-
-function scoreRecipe(query: string, recipe: any) {
-  const normalized = query.trim().toLowerCase();
-  if (!normalized) return 0;
-  const tokens = normalized.split(/\s+/).filter(Boolean);
-  const name = (recipe.name ?? "").toLowerCase();
-  const original = (recipe.name_original ?? "").toLowerCase();
-  const notes = (recipe.notes ?? "").toLowerCase();
-  const mealTypes = Array.isArray(recipe.meal_types) ? recipe.meal_types.join(" ").toLowerCase() : "";
-  let score = 0;
-  if (name.includes(normalized) || original.includes(normalized)) score += 6;
-  for (const token of tokens) {
-    if (name.includes(token)) score += 3;
-    if (original.includes(token)) score += 3;
-    if (notes.includes(token)) score += 1;
-    if (mealTypes.includes(token)) score += 1;
-  }
-  return score;
-}
+import type { LocalRecipeResult, LocalSearchResponse } from "@/lib/types";
+import { scoreRecipeMatch } from "@/lib/search";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -51,12 +26,12 @@ export async function GET(request: Request) {
     const scored = data
       .map((row) => ({
         recipe: row,
-        score: scoreRecipe(query, row),
+        score: scoreRecipeMatch(query, row),
       }))
       .sort((a, b) => b.score - a.score)
       .map((entry) => entry.recipe)
       .slice(0, limit);
-    const results: LocalResult[] = scored.map((row) => ({
+    const results: LocalRecipeResult[] = scored.map((row) => ({
       recipe_id: row.recipe_id,
       name: row.name,
       name_original: row.name_original ?? null,
@@ -70,14 +45,14 @@ export async function GET(request: Request) {
   const scored = recipes
     .map((recipe) => ({
       recipe,
-      score: scoreRecipe(query, recipe),
+      score: scoreRecipeMatch(query, recipe),
     }))
     .filter((entry) => entry.score > 0)
     .sort((a, b) => b.score - a.score)
     .map((entry) => entry.recipe)
     .slice(0, limit);
 
-  const results: LocalResult[] = scored.map((recipe) => ({
+  const results: LocalRecipeResult[] = scored.map((recipe) => ({
     recipe_id: recipe.recipe_id,
     name: recipe.name,
     name_original: recipe.name_original ?? null,

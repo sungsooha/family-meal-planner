@@ -2,18 +2,7 @@ import { NextResponse } from "next/server";
 import { buildGeminiRecipePrompt } from "@/lib/prompt";
 import { formatIngredients, formatInstructions } from "@/lib/recipeForm";
 import { getYouTubeId } from "@/lib/youtube";
-type PrefillPayload = {
-  name: string;
-  name_original?: string;
-  meal_types?: string[];
-  servings?: number | string | null;
-  source_url?: string | null;
-  thumbnail_url?: string | null;
-  ingredients_text?: string;
-  ingredients_original_text?: string;
-  instructions_text?: string;
-  instructions_original_text?: string;
-};
+import type { RecipePrefill, RecipePrefillRequest, RecipePrefillResponse } from "@/lib/types";
 
 type GeminiResponse = {
   candidates?: Array<{
@@ -26,7 +15,7 @@ const prefillCache = new Map<
   string,
   {
     expiresAt: number;
-    prefill: PrefillPayload;
+    prefill: RecipePrefill;
     model?: string;
   }
 >();
@@ -120,28 +109,41 @@ function parseGeminiJson(text: string): any | null {
 
 
 export async function POST(request: Request) {
-  const payload = await request.json().catch(() => null);
+  const payload = (await request.json().catch(() => null)) as RecipePrefillRequest | null;
   if (!payload?.source_url) {
-    return NextResponse.json({ error: "Missing source_url." }, { status: 400 });
+    return NextResponse.json<RecipePrefillResponse>(
+      { error: "Missing source_url.", prefill: {}, cached: false },
+      { status: 400 },
+    );
   }
 
   const sourceUrl = String(payload.source_url);
   const videoId = getYouTubeId(sourceUrl);
   if (!videoId) {
-    return NextResponse.json({ error: "Only YouTube URLs are supported right now." }, { status: 400 });
+    return NextResponse.json<RecipePrefillResponse>(
+      { error: "Only YouTube URLs are supported right now.", prefill: {}, cached: false },
+      { status: 400 },
+    );
   }
   const forceRefresh = Boolean(payload.force);
 
   const cacheKey = videoId;
   const cached = prefillCache.get(cacheKey);
   if (!forceRefresh && cached && cached.expiresAt > Date.now()) {
-    return NextResponse.json({ prefill: cached.prefill, cached: true, model: cached.model });
+    return NextResponse.json<RecipePrefillResponse>({
+      prefill: cached.prefill,
+      cached: true,
+      model: cached.model,
+    });
   }
 
   const youtubeKey = process.env.YOUTUBE_API_KEY;
   const geminiKey = process.env.GEMINI_API_KEY;
   if (!youtubeKey || !geminiKey) {
-    return NextResponse.json({ error: "Missing YOUTUBE_API_KEY or GEMINI_API_KEY." }, { status: 500 });
+    return NextResponse.json<RecipePrefillResponse>(
+      { error: "Missing YOUTUBE_API_KEY or GEMINI_API_KEY.", prefill: {}, cached: false },
+      { status: 500 },
+    );
   }
 
   try {
@@ -198,7 +200,7 @@ export async function POST(request: Request) {
     }
 
     const inferredMealTypes = Array.isArray(parsed.meal_types) ? parsed.meal_types.filter(Boolean) : [];
-    const prefill: PrefillPayload = {
+    const prefill: RecipePrefill = {
       name: parsed.name ?? title ?? "",
       name_original: parsed.name_original ?? title ?? "",
       meal_types: inferredMealTypes.length > 0 ? inferredMealTypes : ["Flexible"],
@@ -213,8 +215,15 @@ export async function POST(request: Request) {
 
     prefillCache.set(cacheKey, { prefill, expiresAt: Date.now() + CACHE_TTL_MS, model: usedModel });
 
-    return NextResponse.json({ prefill, cached: false, model: usedModel });
+    return NextResponse.json<RecipePrefillResponse>({
+      prefill,
+      cached: false,
+      model: usedModel,
+    });
   } catch (error) {
-    return NextResponse.json({ error: (error as Error).message ?? "Prefill failed." }, { status: 500 });
+    return NextResponse.json<RecipePrefillResponse>(
+      { error: (error as Error).message ?? "Prefill failed.", prefill: {}, cached: false },
+      { status: 500 },
+    );
   }
 }

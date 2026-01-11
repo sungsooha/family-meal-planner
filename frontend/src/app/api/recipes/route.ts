@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { addRecipe, getRecipeSourceById, getRecipes } from "@/lib/data";
 import { jsonWithCache } from "@/lib/cache";
+import type { RecipeCreateRequest, RecipeSummaryResponse, RecipesCreateResponse, Recipe } from "@/lib/types";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -35,13 +36,16 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const payload = await request.json().catch(() => null);
+  const payload = (await request.json().catch(() => null)) as RecipeCreateRequest | null;
   if (!payload) {
-    return NextResponse.json({ error: "Invalid payload." }, { status: 400 });
+    return NextResponse.json<RecipesCreateResponse>({ ok: false, error: "Invalid payload." }, { status: 400 });
   }
   const result = await addRecipe(payload);
   if (!result.ok) {
-    return NextResponse.json({ error: result.error ?? "Unable to add recipe." }, { status: 409 });
+    return NextResponse.json<RecipesCreateResponse>(
+      { ok: false, error: result.error ?? "Unable to add recipe." },
+      { status: 409 },
+    );
   }
-  return NextResponse.json({ ok: true });
+  return NextResponse.json<RecipesCreateResponse>({ ok: true });
 }

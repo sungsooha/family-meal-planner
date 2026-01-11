@@ -3,31 +3,20 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Search, X } from "lucide-react";
-import { decodeHtmlEntities, sanitizeTitle } from "@/lib/text";
+import { decodeHtmlEntities, normalizeTitle, sanitizeTitle } from "@/lib/text";
+import type {
+  LocalRecipeResult,
+  LocalSearchResponse,
+  RecipeSearchCandidate,
+  RecipeSearchRequest,
+  RecipeSearchResponse,
+} from "@/lib/types";
 import { useLanguage } from "./LanguageProvider";
-
-type RecipeCandidate = {
-  title: string;
-  source_url: string;
-  thumbnail_url?: string | null;
-  servings?: number | string | null;
-  ingredients?: string[];
-  instructions?: string[];
-  source_host?: string;
-};
-
-type LocalResult = {
-  recipe_id: string;
-  name: string;
-  name_original?: string | null;
-  source_url?: string | null;
-  thumbnail_url?: string | null;
-};
 
 type Props = {
   open: boolean;
   onClose: () => void;
-  onUseCandidate: (candidate: RecipeCandidate) => void;
+  onUseCandidate: (candidate: RecipeSearchCandidate) => void;
   initialQuery?: string;
 };
 
@@ -39,7 +28,7 @@ type CachePayload = {
   query: string;
   onlyYoutube: boolean;
   includeShorts?: boolean;
-  onlineResults: RecipeCandidate[];
+  onlineResults: RecipeSearchCandidate[];
   searchNotice: string;
   searchHint: string;
 };
@@ -56,13 +45,13 @@ export default function RecipeSearchModal({
 
   const [query, setQuery] = useState("");
   const [onlyYoutube, setOnlyYoutube] = useState(false);
-  const [onlineResults, setOnlineResults] = useState<RecipeCandidate[]>([]);
-  const [localResults, setLocalResults] = useState<LocalResult[]>([]);
+  const [onlineResults, setOnlineResults] = useState<RecipeSearchCandidate[]>([]);
+  const [localResults, setLocalResults] = useState<LocalRecipeResult[]>([]);
   const [searchError, setSearchError] = useState("");
   const [searchNotice, setSearchNotice] = useState("");
   const [searchHint, setSearchHint] = useState("");
   const [loading, setLoading] = useState(false);
-  const [previewCandidate, setPreviewCandidate] = useState<RecipeCandidate | null>(null);
+  const [previewCandidate, setPreviewCandidate] = useState<RecipeSearchCandidate | null>(null);
   const [previewPos, setPreviewPos] = useState<{ x: number; y: number } | null>(null);
   const [includeShorts, setIncludeShorts] = useState(true);
   const [recentQueries, setRecentQueries] = useState<string[]>([]);
@@ -180,7 +169,6 @@ export default function RecipeSearchModal({
     }
   };
 
-  const normalizeTitle = (value: string) => sanitizeTitle(value).toLowerCase();
   const localUrlSet = useMemo(
     () => new Set(localResults.map((recipe) => normalizeUrl(recipe.source_url ?? ""))),
     [localResults],
@@ -230,9 +218,9 @@ export default function RecipeSearchModal({
         limit: 6,
         source: onlyYoutube ? "youtube" : "all",
         include_shorts: includeShorts,
-      }),
+      } satisfies RecipeSearchRequest),
     });
-    const payload = await response.json().catch(() => ({}));
+    const payload = (await response.json().catch(() => ({}))) as RecipeSearchResponse;
     if (!response.ok) {
       setSearchError(payload.error ?? "Search failed.");
       setLoading(false);
@@ -270,7 +258,7 @@ export default function RecipeSearchModal({
           setLocalResults([]);
           return;
         }
-        const data = await response.json();
+        const data = (await response.json().catch(() => [])) as LocalSearchResponse;
         setLocalResults(Array.isArray(data) ? data : []);
       } catch (error) {
         if ((error as Error)?.name !== "AbortError") {

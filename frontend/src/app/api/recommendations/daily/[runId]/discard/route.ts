@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 import { getDailyRecommendations, saveDailyRecommendations } from "@/lib/data";
+import type { DailyRecommendationDiscardRequest, DailyRecommendationDiscardResponse } from "@/lib/types";
 
 type Params = { params: Promise<{ runId: string }> };
 
 export async function POST(request: Request, { params }: Params) {
   const debugEnabled = process.env.RECO_DEBUG === "1";
   const { runId } = await params;
-  const payload = await request.json().catch(() => ({}));
+  const payload = (await request.json().catch(() => ({}))) as DailyRecommendationDiscardRequest;
   const candidateId = String(payload?.candidate_id ?? "");
   if (!candidateId) {
     return NextResponse.json({ error: "Missing candidate_id." }, { status: 400 });
@@ -27,5 +28,5 @@ export async function POST(request: Request, { params }: Params) {
   }
   await saveDailyRecommendations(store);
 
-  return NextResponse.json({ ok: true, run });
+  return NextResponse.json<DailyRecommendationDiscardResponse>({ ok: true, run });
 }

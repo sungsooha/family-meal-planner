@@ -4,23 +4,13 @@ import { useEffect, useState } from "react";
 import useSWR from "swr";
 import { X, Pencil, RefreshCw, Lock, Unlock, Trash2, Printer } from "lucide-react";
 import { useToast } from "@/components/ToastProvider";
-
-type BuyListItem = {
-  name: string;
-  unit: string;
-  quantity: string | number;
-  key?: string;
-};
-
-type BuyList = {
-  id: string;
-  week_start: string;
-  week_end: string;
-  saved_at: string;
-  status: "open" | "locked";
-  lang: string;
-  items: BuyListItem[];
-};
+import type {
+  BuyList,
+  BuyListItem,
+  BuyListUpdateRequest,
+  BuyListUpdateResponse,
+  BuyListsResponse,
+} from "@/lib/types";
 
 export default function SavedBuyListsPage() {
   const [lists, setLists] = useState<BuyList[]>([]);
@@ -28,7 +18,7 @@ export default function SavedBuyListsPage() {
   const [draftItems, setDraftItems] = useState<BuyListItem[]>([]);
   const { showToast } = useToast();
 
-  const { data: listsData, mutate: mutateLists } = useSWR<{ lists: BuyList[] }>("/api/buy-lists");
+  const { data: listsData, mutate: mutateLists } = useSWR<BuyListsResponse>("/api/buy-lists");
 
   useEffect(() => {
     if (listsData?.lists) {
@@ -38,6 +28,7 @@ export default function SavedBuyListsPage() {
 
   const handleSync = async (list: BuyList) => {
     const response = await fetch(`/api/buy-lists/${list.id}/sync`, { method: "POST" });
+    const data = (await response.json().catch(() => ({}))) as BuyListUpdateResponse;
     if (!response.ok) {
       showToast("Unable to sync list.");
       return;
@@ -53,6 +44,7 @@ export default function SavedBuyListsPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(updated),
     });
+    const data = (await response.json().catch(() => ({}))) as BuyListUpdateResponse;
     if (!response.ok) {
       showToast("Unable to update list.");
       return;
@@ -62,6 +54,7 @@ export default function SavedBuyListsPage() {
 
   const handleDelete = async (list: BuyList) => {
     const response = await fetch(`/api/buy-lists/${list.id}`, { method: "DELETE" });
+    const data = (await response.json().catch(() => ({}))) as BuyListUpdateResponse;
     if (!response.ok) {
       showToast("Unable to delete list.");
       return;
@@ -117,6 +110,7 @@ export default function SavedBuyListsPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(updated),
     });
+    const data = (await response.json().catch(() => ({}))) as BuyListUpdateResponse;
     if (!response.ok) {
       showToast("Unable to save list.");
       return;

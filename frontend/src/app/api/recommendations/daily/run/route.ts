@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
 import {
-  DailyRecommendationCandidate,
-  DailyRecommendationRun,
   getConfig,
   getDailyRecommendations,
   getRecipeBySourceUrl,
@@ -9,8 +7,17 @@ import {
   listDailyPlans,
   saveDailyRecommendations,
 } from "@/lib/data";
+import type {
+  DailyRecommendationCandidate,
+  DailyRecommendationRun,
+  DailyRecommendationsRunRequest,
+  DailyRecommendationsRunResponse,
+  WebSearchResult,
+} from "@/lib/types";
 import { getYouTubeId } from "@/lib/youtube";
 import { sanitizeTitle } from "@/lib/text";
+import { formatLocalDate } from "@/lib/calendar";
+import { scoreTitleQueryMatch } from "@/lib/search";
 
 type GeminiIdea = {
   title: string;
@@ -19,20 +26,8 @@ type GeminiIdea = {
   reason?: string;
 };
 
-type SearchResult = {
-  title: string;
-  url: string;
-  snippet?: string;
-};
 
 const MS_PER_DAY = 1000 * 60 * 60 * 24;
-
-function formatLocalDate(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
 
 function daysBetween(a: Date, b: Date): number {
   return Math.floor((a.getTime() - b.getTime()) / MS_PER_DAY);
@@ -75,7 +70,7 @@ function parseGeminiIdeas(raw: string): GeminiIdea[] {
       keywords: Array.isArray(item?.keywords) ? item.keywords : [],
       reason: item?.reason ? String(item.reason) : undefined,
     }))
-    .filter((item) => item.title);
+    .filter((item: GeminiIdea) => item.title);
 }
 
 function buildGeminiPrompt(args: {
@@ -110,10 +105,8 @@ function buildGeminiPrompt(args: {
 }
 
 function scoreCandidate(title: string, query: string, keywords: string[]): number {
+  let score = scoreTitleQueryMatch(title, query);
   const normalized = title.toLowerCase();
-  const queryLower = query.toLowerCase();
-  let score = 0;
-  if (normalized.includes(queryLower)) score += 2;
   keywords.forEach((word) => {
     const token = word.toLowerCase();
     if (!token) return;
@@ -122,7 +115,7 @@ function scoreCandidate(title: string, query: string, keywords: string[]): numbe
   return score;
 }
 
-async function searchWithYouTube(query: string, limit: number): Promise<SearchResult[]> {
+async function searchWithYouTube(query: string, limit: number): Promise<WebSearchResult[]> {
   const apiKey = process.env.YOUTUBE_API_KEY;
   if (!apiKey) {
     throw new Error("YOUTUBE_API_KEY is not configured.");
@@ -156,11 +149,11 @@ async function searchWithYouTube(query: string, limit: number): Promise<SearchRe
       url: item.id?.videoId ? `https://www.youtube.com/watch?v=${item.id.videoId}` : "",
       snippet: item.snippet?.description ?? "",
     }))
-    .filter((item: SearchResult) => item.url);
+    .filter((item: WebSearchResult) => item.url);
 }
 
 export async function POST(request: Request) {
-  const payload = await request.json().catch(() => ({}));
+  const payload = (await request.json().catch(() => ({}))) as DailyRecommendationsRunRequest;
   const force = Boolean(payload?.force);
   const targetDate = String(payload?.date ?? formatLocalDate(new Date()));
   const language = payload?.language === "original" ? "original" : "en";
@@ -184,14 +177,14 @@ export async function POST(request: Request) {
     debugSteps.push(`${label}: ${preview}`);
   };
   if (config.daily_reco_enabled === false) {
-    return NextResponse.json(
+    return NextResponse.json<DailyRecommendationsRunResponse>(
       { error: "Daily recommendations are disabled in config." },
       { status: 400 },
     );
   }
   const existing = store.runs?.find((run) => run.date === targetDate);
   if (existing && !force) {
-    return NextResponse.json({ run: existing, reused: true });
+    return NextResponse.json<DailyRecommendationsRunResponse>({ run: existing, reused: true });
   }
 
   const runId = requestedRunId || crypto.randomUUID();
@@ -445,5 +438,5 @@ export async function POST(request: Request) {
 
   run.status = run.status === "running" ? "local-only" : run.status;
   await commitRun();
-  return NextResponse.json({ run });
+  return NextResponse.json<DailyRecommendationsRunResponse>({ run });
 }
