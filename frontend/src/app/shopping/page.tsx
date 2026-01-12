@@ -447,7 +447,11 @@ export default function ShoppingPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs uppercase tracking-wide text-slate-400">Used in recipes</p>
-                <h4 className="text-lg font-semibold text-slate-900">{recipeDetail.name}</h4>
+                <h4 className="text-lg font-semibold text-slate-900">
+                  {lang === "original"
+                    ? recipeDetail.name_original ?? recipeDetail.name
+                    : recipeDetail.name ?? recipeDetail.name_original ?? ""}
+                </h4>
               </div>
               <button onClick={() => setRecipeIds([])}>
                 <X className="h-4 w-4 text-slate-400" />

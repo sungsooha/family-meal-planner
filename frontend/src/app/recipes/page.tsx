@@ -197,7 +197,11 @@ function RecipesPageClient() {
                   {recipe.thumbnail_url ? (
                     <Image
                       src={recipe.thumbnail_url}
-                      alt={recipe.name}
+                      alt={
+                        language === "original"
+                          ? recipe.name_original ?? recipe.name
+                          : recipe.name ?? recipe.name_original ?? ""
+                      }
                       width={64}
                       height={64}
                       className="h-16 w-16 rounded-xl object-cover"

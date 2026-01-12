@@ -1025,7 +1025,12 @@ export default function WeeklyPlanPage() {
               </button>
             </div>
             <div className="grid max-h-[60vh] gap-3 overflow-y-auto">
-              {filteredRecipes.map((recipe) => (
+              {filteredRecipes.map((recipe) => {
+                const displayName =
+                  language === "original"
+                    ? recipe.name_original ?? recipe.name
+                    : recipe.name ?? recipe.name_original;
+                return (
                 <button
                   key={recipe.recipe_id}
                   className="flex items-center justify-between rounded-2xl border border-slate-100 px-4 py-3 text-left transition hover:-translate-y-0.5 hover:border-slate-200 hover:bg-slate-50 hover:shadow-md hover:ring-1 hover:ring-emerald-200/70"
@@ -1035,14 +1040,14 @@ export default function WeeklyPlanPage() {
                   }}
                 >
                   <div>
-                    <p className="text-sm font-semibold text-slate-900">{recipe.name}</p>
+                    <p className="text-sm font-semibold text-slate-900">{displayName}</p>
                     <p className="text-xs text-slate-500">
                       {(recipe.meal_types ?? []).join(", ") || "Flexible"} · {recipe.servings ?? "?"} servings
                     </p>
                   </div>
                   <ChefHat className="h-4 w-4 text-slate-400" />
                 </button>
-              ))}
+              )})}
             </div>
           </div>
         </div>
